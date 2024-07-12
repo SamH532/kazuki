@@ -1,5 +1,7 @@
 package com.anaplan.engineering.kazuki.core.test
 
+import com.anaplan.engineering.kazuki.core.Cat
+import com.anaplan.engineering.kazuki.core.CatRecord_Module.mk_CatRecord
 import com.anaplan.engineering.kazuki.core.GenericRecordExtension_Module.component1
 import com.anaplan.engineering.kazuki.core.GenericRecordExtension_Module.component2
 import com.anaplan.engineering.kazuki.core.GenericRecordExtension_Module.mk_GenericRecordExtension
@@ -9,19 +11,23 @@ import com.anaplan.engineering.kazuki.core.GenericRecordInvOnlyExtension_Module.
 import com.anaplan.engineering.kazuki.core.GenericRecord_Module.as_GenericRecord
 import com.anaplan.engineering.kazuki.core.GenericRecord_Module.is_GenericRecord
 import com.anaplan.engineering.kazuki.core.GenericRecord_Module.mk_GenericRecord
+import com.anaplan.engineering.kazuki.core.MaineCoon
+import com.anaplan.engineering.kazuki.core.MaineCoonRecord_Module.mk_MaineCoonRecord
+import com.anaplan.engineering.kazuki.core.MoggyRecord_Module.mk_MoggyRecord
 import com.anaplan.engineering.kazuki.core.OtherGenericRecord_Module.mk_OtherGenericRecord
 import com.anaplan.engineering.kazuki.core.OtherRecord_Module.mk_OtherRecord
+import com.anaplan.engineering.kazuki.core.RecordDblExtension_Module.mk_RecordDblExtension
 import com.anaplan.engineering.kazuki.core.RecordExtensionAlternate_Module.mk_RecordExtensionAlternate
 import com.anaplan.engineering.kazuki.core.RecordExtension_Module.component1
 import com.anaplan.engineering.kazuki.core.RecordExtension_Module.component2
 import com.anaplan.engineering.kazuki.core.RecordExtension_Module.mk_RecordExtension
+import com.anaplan.engineering.kazuki.core.RecordExtension_Module.set
 import com.anaplan.engineering.kazuki.core.RecordInvOnlyExtension_Module.as_RecordInvOnlyExtension
 import com.anaplan.engineering.kazuki.core.RecordInvOnlyExtension_Module.is_RecordInvOnlyExtension
 import com.anaplan.engineering.kazuki.core.RecordInvOnlyExtension_Module.mk_RecordInvOnlyExtension
 import com.anaplan.engineering.kazuki.core.Record_Module.as_Record
 import com.anaplan.engineering.kazuki.core.Record_Module.is_Record
 import com.anaplan.engineering.kazuki.core.Record_Module.mk_Record
-import com.anaplan.engineering.kazuki.core.RecordExtension_Module.set
 import com.anaplan.engineering.kazuki.core.mk_Set
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,6 +40,13 @@ class TestRecordExtension {
         val record = mk_RecordExtension(3, "a")
         assertEquals(record.a, 3)
         assertEquals(record.b, "a")
+
+        // Ensuring override are handled correctly
+        val cat = Cat()
+        assertEquals(cat, mk_CatRecord(cat).me)
+        assertEquals(cat, mk_MoggyRecord(cat).me)
+        val maineCoon = MaineCoon()
+        assertEquals(maineCoon, mk_MaineCoonRecord(maineCoon).me)
     }
 
     @Test
@@ -164,10 +177,10 @@ class TestRecordExtension {
         assertEquals(2, c)
         assertEquals(mk_Set(3), d)
 
-//        val (e,f,g) = mk_RecordDblExtension(2, "3", 4.0)
-//        assertEquals(2, e)
-//        assertEquals("3", f)
-//        assertEquals(4.0, g)
+        val (e,f,g) = mk_RecordDblExtension(2, "3", 4.0)
+        assertEquals(2, e)
+        assertEquals("3", f)
+        assertEquals(4.0, g)
     }
 
     @Test

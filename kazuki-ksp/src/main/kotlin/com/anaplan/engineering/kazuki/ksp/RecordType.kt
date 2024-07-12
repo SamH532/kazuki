@@ -37,8 +37,16 @@ internal fun TypeSpec.Builder.addRecordType(
         val index: Int,
         val name: String,
         val typeReference: KSTypeReference,
-        val typeName: TypeName = typeReference.toTypeName(interfaceTypeParameterResolver)
+        val typeName: TypeName
     )
+
+    data class TupleComponentBuilder(
+        val name: String,
+        val typeReference: KSTypeReference,
+    ) {
+        fun build(index: Int) =
+            TupleComponent(index, name, typeReference, typeReference.toTypeName(interfaceTypeParameterResolver))
+    }
 
     val superRecords =
         interfaceClassDcl.allSuperTypes().filter { it.resolve().declaration.isAnnotationPresent(Module::class) }
@@ -61,30 +69,32 @@ internal fun TypeSpec.Builder.addRecordType(
     val recordProperties =
         (properties - functionProviderProperties).filter { !it.isMutable && it.isAbstract() }.toList()
 
-    var index = 1
     val allInterfaceProperties = interfaceClassDcl.getAllProperties().toList()
-    val tupleComponents = superRecords.flatMap { type ->
+    val tupleComponentBuilders = superRecords.reversed().map { type ->
         val superClassDcl = type.resolve().declaration as KSClassDeclaration
         val superProperties = superClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
         val superFunctionProviderProperties = superProperties.filter { it.isAnnotationPresent(FunctionProvider::class) }
         val superRecordProperties =
             (superProperties - superFunctionProviderProperties).filter { !it.isMutable && it.isAbstract() }.toList()
         superRecordProperties.map { superProperty -> allInterfaceProperties.find { interfaceProperty -> superProperty.simpleName == interfaceProperty.simpleName }!! }
-            .map { property ->
+            .associate { property ->
                 property.type.resolve()
-                TupleComponent(
-                    index++,
-                    property.simpleName.asString(),
+                val name = property.simpleName.asString()
+                name to TupleComponentBuilder(
+                    name,
                     property.type
                 )
             }
-    } + recordProperties.map { property ->
-        TupleComponent(
-            index++,
-            property.simpleName.asString(),
+    } + recordProperties.associate { property ->
+        val name = property.simpleName.asString()
+        name to TupleComponentBuilder(
+            name,
             property.type
         )
     }
+    val tupleComponents = tupleComponentBuilders.fold(mapOf<String, TupleComponentBuilder>()) { acc, it ->
+        acc + it
+    }.map { (_, v) -> v }.mapIndexed { i, b -> b.build(i + 1) }
     if (tupleComponents.isEmpty()) {
         throw IllegalStateException("Cannot have empty record")
     }

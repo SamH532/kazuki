@@ -62,8 +62,31 @@ interface OtherGenericRecord<T> {
 }
 
 // TODO - incorrect ordering
-//@Module
-//interface RecordDblExtension: RecordExtension, Tuple3<Int, String, Double> {
-//    val c: Double
-//}
+@Module
+interface RecordDblExtension: RecordExtension, Tuple3<Int, String, Double> {
+    val c: Double
+}
 
+interface Animal
+open class Cat: Animal
+class MaineCoon: Cat()
+
+@Module
+interface AnimalRecord {
+    val me: Animal
+}
+
+@Module
+interface CatRecord: AnimalRecord {
+    override val me: Cat
+}
+
+@Module
+interface MaineCoonRecord: CatRecord {
+    override val me: MaineCoon
+}
+
+@Module
+interface MoggyRecord: CatRecord {
+
+}
