@@ -105,6 +105,13 @@ fun <T> Sequence<T>.first(): T {
     return this[1]
 }
 
+fun <T> Sequence<T>.last(): T {
+    if (isEmpty()) {
+        throw PreconditionFailure("Sequence is empty")
+    }
+    return this[len]
+}
+
 fun <T> Sequence<T>.head() = first()
 
 fun <T> Sequence<T>.tail() = drop(1)

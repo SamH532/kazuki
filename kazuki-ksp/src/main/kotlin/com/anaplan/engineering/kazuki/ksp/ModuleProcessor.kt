@@ -52,7 +52,6 @@ internal class ModuleProcessor(
     }
 
     private fun processModuleClass(clazz: KSClassDeclaration) {
-
         val moduleClassName = "${clazz.simpleName.asString()}_Module"
         val moduleTypeSpec = TypeSpec.objectBuilder(moduleClassName).apply {
             when (clazz.kazukiType()) {

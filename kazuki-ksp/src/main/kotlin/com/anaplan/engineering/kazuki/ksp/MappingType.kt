@@ -11,7 +11,6 @@ import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 
@@ -66,10 +65,8 @@ private fun TypeSpec.Builder.addMappingType(
     val mappingType =
         interfaceClassDcl.superTypes.single { it.resolve().declaration.qualifiedName?.asString() == superInterface.qualifiedName }
             .resolve()
-    val domainType = mappingType.arguments[0].type!!.resolve()
-    val rangeType = mappingType.arguments[1].type!!.resolve()
-    val domainTypeName = domainType.toTypeName(interfaceTypeParameterResolver)
-    val rangeTypeName = rangeType.toTypeName(interfaceTypeParameterResolver)
+    val domainTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface, 0)
+    val rangeTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface, 1)
     val baseMapPropertyName = "baseMap"
     val baseSetPropertyName = "baseSet"
     val enforceInvariantParameterName = "enforceInvariant"
@@ -316,6 +313,11 @@ private fun TypeSpec.Builder.addMappingType(
             if (interfaceTypeArguments.isNotEmpty()) {
                 addTypeVariables(interfaceTypeArguments)
             }
+            val implTypeArgs = if (interfaceTypeArguments.isEmpty()) {
+                ""
+            } else {
+                "<" + interfaceTypeArguments.joinToString(", ") + ">"
+            }
             addParameter(
                 mapletsParameterName, Iterable::class.asClassName().parameterizedBy(
                     tupleType
@@ -323,7 +325,7 @@ private fun TypeSpec.Builder.addMappingType(
             )
             returns(Boolean::class)
             addStatement(
-                "return %N(%T().apply·{ %N.forEach{ put(it._1, it._2) } }, false).%N()",
+                "return %N$implTypeArgs(%T().apply·{ %N.forEach{ put(it._1, it._2) } }, false).%N()",
                 implClassName,
                 LinkedHashMap::class.asClassName().parameterizedBy(domainTypeName, rangeTypeName),
                 mapletsParameterName,

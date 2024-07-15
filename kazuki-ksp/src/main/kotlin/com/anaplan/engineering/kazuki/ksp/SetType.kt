@@ -11,7 +11,6 @@ import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 
@@ -48,11 +47,7 @@ private fun TypeSpec.Builder.addSetType(
     }
 
     val superInterface = if (requiresNonEmpty) Set1::class else Set::class
-    val setType =
-        interfaceClassDcl.allSuperTypes().single { it.resolve().declaration.qualifiedName?.asString() == superInterface.qualifiedName }
-            .resolve()
-    val elementType = setType.arguments.single().type!!.resolve()
-    val elementTypeName = elementType.toTypeName(interfaceTypeParameterResolver)
+    val elementTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface, 0)
     val elementsPropertyName = "elements"
     val enforceInvariantParameterName = "enforceInvariant"
     val superSetTypeName = Set::class.asClassName().parameterizedBy(elementTypeName)
@@ -146,9 +141,14 @@ private fun TypeSpec.Builder.addSetType(
             if (interfaceTypeArguments.isNotEmpty()) {
                 addTypeVariables(interfaceTypeArguments)
             }
+            val implTypeArgs = if (interfaceTypeArguments.isEmpty()) {
+                ""
+            } else {
+                "<" + interfaceTypeArguments.joinToString(", ") + ">"
+            }
             addParameter(elementsPropertyName, superSetTypeName)
             returns(Boolean::class)
-            addStatement("return %N(%N, false).%N()", implClassName, elementsPropertyName, validityFunctionName)
+            addStatement("return %N$implTypeArgs(%N, false).%N()", implClassName, elementsPropertyName, validityFunctionName)
         }.build()
     )
     addFunction(

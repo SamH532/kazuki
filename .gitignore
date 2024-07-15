@@ -8,3 +8,5 @@ out/
 *.swp
 *.hprof
 
+ksp-sandbox/
+sandbox-test/

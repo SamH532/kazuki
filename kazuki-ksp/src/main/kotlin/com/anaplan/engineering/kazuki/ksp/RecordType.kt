@@ -266,8 +266,13 @@ internal fun TypeSpec.Builder.addRecordType(
                     }
                 }
 
+                val implTypeArgs = if (interfaceTypeArguments.isEmpty()) {
+                    ""
+                } else {
+                    "<" + interfaceTypeArguments.joinToString(", ") + ">"
+                }
                 addStatement(
-                    "return %N(${tupleComponents.joinToString { "%N.%N as %T" }}, false).%N()",
+                    "return %N$implTypeArgs(${tupleComponents.joinToString { "%N.%N as %T" }}, false).%N()",
                     implClassName,
                     *tupleComponents.flatMap { listOf(otherParameterName, "_${it.index}", it.typeName) }.toTypedArray(),
                     validityFunctionName

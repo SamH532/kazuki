@@ -10,7 +10,6 @@ import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 
@@ -47,11 +46,7 @@ private fun TypeSpec.Builder.addSequenceType(
     }
 
     val superInterface = if (requiresNonEmpty) Sequence1::class else Sequence::class
-    val seqType =
-        interfaceClassDcl.allSuperTypes().single { it.resolve().declaration.qualifiedName?.asString() == superInterface.qualifiedName }
-            .resolve()
-    val elementType = seqType.arguments.single().type!!.resolve()
-    val elementTypeName = elementType.toTypeName(interfaceTypeParameterResolver)
+    val elementTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface, 0)
     val elementsPropertyName = "elements"
     val enforceInvariantParameterName = "enforceInvariant"
     val superListTypeName = List::class.asClassName().parameterizedBy(elementTypeName)
@@ -203,9 +198,14 @@ private fun TypeSpec.Builder.addSequenceType(
             if (interfaceTypeArguments.isNotEmpty()) {
                 addTypeVariables(interfaceTypeArguments)
             }
+            val implTypeArgs = if (interfaceTypeArguments.isEmpty()) {
+                ""
+            } else {
+                "<" + interfaceTypeArguments.joinToString(", ") + ">"
+            }
             addParameter(elementsPropertyName, superListTypeName)
             returns(Boolean::class)
-            addStatement("return %N(%N, false).%N()", implClassName, elementsPropertyName, validityFunctionName)
+            addStatement("return %N$implTypeArgs(%N, false).%N()", implClassName, elementsPropertyName, validityFunctionName)
         }.build()
     )
     addFunction(
@@ -219,3 +219,5 @@ private fun TypeSpec.Builder.addSequenceType(
         }.build()
     )
 }
+
+
