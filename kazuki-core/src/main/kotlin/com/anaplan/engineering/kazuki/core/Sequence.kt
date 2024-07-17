@@ -64,7 +64,7 @@ infix fun <T> Sequence<T>.subseq(other: Sequence<T>) =
     this == other || (1..other.len).any { i -> this == other.drop(i - 1).take(len) }
 
 infix fun <T, S : Sequence<T>> S.domRestrictTo(s: Set<nat1>) = transformSequence {
-    it.elements.filterIndexed { i, _ -> i in s }
+    it.elements.filterIndexed { i, _ -> (i + 1) in s }
 }
 
 infix fun <T, S : Sequence<T>> S.drt(s: Set<nat1>) = domRestrictTo(s)
@@ -78,13 +78,13 @@ infix fun <T, S : Sequence<T>> S.rrt(s: Set<T>) = rngRestrictTo(s)
 infix fun <T, S : Sequence<T>> S.cat(s: Sequence<T>) = transformSequence { it.elements + s }
 
 infix fun <T, S : Sequence<T>> S.domSubtract(s: Set<nat1>) = transformSequence {
-    it.elements.filterIndexed { i, _ -> i !in s }
+    it.elements.filterIndexed { i, _ -> (i + 1) !in s }
 }
 
 infix fun <T, S : Sequence<T>> S.dsub(s: Set<nat1>) = domSubtract(s)
 
 infix fun <T, S : Sequence<T>> S.rngSubtract(s: Set<T>) = transformSequence {
-    it.elements.filter { e -> e in s }
+    it.elements.filter { e -> e !in s }
 }
 
 infix fun <T, S : Sequence<T>> S.rsub(s: Set<T>) = rngSubtract(s)
@@ -94,8 +94,10 @@ infix operator fun <T, S : Sequence<T>> S.plus(s: Sequence<T>) = transformSequen
 
 infix operator fun <T, S : Sequence<T>> S.plus(t: T) = transformSequence { it.elements + t }
 
+// TODO -- not sure this is correct, should we keep?
 infix operator fun <T, S : Sequence<T>> S.minus(s: Sequence<T>) = transformSequence { it.elements - s }
 
+// TODO -- not sure this is correct, should we keep?
 infix operator fun <T, S : Sequence<T>> S.minus(t: T) = transformSequence { it.elements - t }
 
 fun <T> Sequence<T>.first(): T {
