@@ -18,6 +18,14 @@ annotation class Module(
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Invariant
 
+
+/**
+ * Annotates a derived property that should be used for all available comparisons (including equality)
+ */
+@Target(AnnotationTarget.PROPERTY)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class Comparable
+
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class PrimitiveInvariant(

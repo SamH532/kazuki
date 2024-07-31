@@ -26,7 +26,7 @@ internal class ModuleProcessor(
     }
 
     private fun KSClassDeclaration.kazukiType(): KazukiType {
-        val superTypeNames = allSuperTypes().map { it.resolve().declaration.qualifiedName?.asString() }
+        val superTypeNames = allSuperTypes.map { it.resolve().declaration.qualifiedName?.asString() }
         // TODO -- might be more than one!
         return if (Sequence1::class.qualifiedName in superTypeNames) {
             KazukiType.Sequence1Type

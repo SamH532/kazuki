@@ -48,8 +48,7 @@ internal fun TypeSpec.Builder.addRecordType(
             TupleComponent(index, name, typeReference, typeReference.toTypeName(interfaceTypeParameterResolver))
     }
 
-    val superRecords =
-        interfaceClassDcl.allSuperTypes().filter { it.resolve().declaration.isAnnotationPresent(Module::class) }
+    val superRecords = interfaceClassDcl.superModules
 
     val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
     if (properties.any { it.isMutable }) {
@@ -92,11 +91,12 @@ internal fun TypeSpec.Builder.addRecordType(
             property.type
         )
     }
+    val comparableProperty = getComparableProperty(interfaceClassDcl, processingState)
     val tupleComponents = tupleComponentBuilders.fold(mapOf<String, TupleComponentBuilder>()) { acc, it ->
         acc + it
     }.map { (_, v) -> v }.mapIndexed { i, b -> b.build(i + 1) }
     if (tupleComponents.isEmpty()) {
-        throw IllegalStateException("Cannot have empty record")
+        throw IllegalStateException("Record $interfaceTypeName must have fields")
     }
     val tupleType = ClassName(corePackage, "Tuple${tupleComponents.size}").parameterizedBy(
         tupleComponents.map { it.typeName }
@@ -173,6 +173,17 @@ internal fun TypeSpec.Builder.addRecordType(
         )
 
         addFunction(
+            FunSpec.builder("hashCode").addModifiers(KModifier.OVERRIDE)
+                .returns(Int::class).apply {
+                    if (comparableProperty == null) {
+                        addStatement("return ${corePackage}.mk_(${tupleComponents.joinToString(", ") { "_${it.index}" }}).hashCode()")
+                    } else {
+                        addStatement("return %N.hashCode()", comparableProperty.simpleName.getShortName())
+                    }
+                }.build()
+        )
+
+        addFunction(
             FunSpec.builder("equals").addModifiers(KModifier.OVERRIDE)
                 .addParameter(
                     ParameterSpec.builder(otherParameterName, Any::class.asTypeName().copy(nullable = true))
@@ -187,14 +198,36 @@ internal fun TypeSpec.Builder.addRecordType(
                     addStatement("return false")
                     endControlFlow()
 
-                    // Tuple type check repeated for smart-cast
-                    beginControlFlow(
-                        "if (%N is %T && $implClassName.$isRelatedFunctionName($otherParameterName))",
-                        otherParameterName,
-                        erasedTupleType
-                    )
-                    addStatement("return ${tupleComponents.joinToString(" && ") { "_${it.index} == $otherParameterName._${it.index}" }}")
-                    endControlFlow()
+                    if (comparableProperty == null) {
+                        // Tuple type check repeated for smart-cast
+                        beginControlFlow(
+                            "if (%N is %T && $implClassName.$isRelatedFunctionName($otherParameterName))",
+                            otherParameterName,
+                            erasedTupleType
+                        )
+                        addStatement("return ${tupleComponents.joinToString(" && ") { "_${it.index} == $otherParameterName._${it.index}" }}")
+                        endControlFlow()
+                    } else {
+                        // TODO -- if the comparable is on ancestors then this should restrict to that
+                        val erasedInterfaceTypeName = if (interfaceTypeArguments.isEmpty()) {
+                            interfaceClassDcl.toClassName()
+                        } else {
+                            interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments.map { STAR })
+                        }
+                        beginControlFlow(
+                            "if (%N is %T)",
+                            otherParameterName,
+                            erasedInterfaceTypeName
+                        )
+                        val comparablePropertyName = comparableProperty.simpleName.getShortName()
+                        addStatement(
+                            "return this.%N == %N.%N",
+                            comparablePropertyName,
+                            otherParameterName,
+                            comparablePropertyName
+                        )
+                        endControlFlow()
+                    }
 
                     addStatement("return false")
 
