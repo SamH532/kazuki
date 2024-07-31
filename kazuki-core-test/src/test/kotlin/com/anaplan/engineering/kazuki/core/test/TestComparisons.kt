@@ -1,14 +1,18 @@
 package com.anaplan.engineering.kazuki.core.test
 
 import com.anaplan.engineering.kazuki.core.*
+import com.anaplan.engineering.kazuki.core.AfternoonTime_Module.mk_AfternoonTime
 import com.anaplan.engineering.kazuki.core.CaselessStringRecord_Module.mk_CaselessStringRecord
 import com.anaplan.engineering.kazuki.core.CaselessString_Module.mk_CaselessString
+import com.anaplan.engineering.kazuki.core.EveningTime_Module.mk_EveningTime
 import com.anaplan.engineering.kazuki.core.Flight_Module.mk_Flight
 import com.anaplan.engineering.kazuki.core.Id1_Module.mk_Id1
 import com.anaplan.engineering.kazuki.core.Id2_Module.mk_Id2
 import com.anaplan.engineering.kazuki.core.Id3_Module.mk_Id3
+import com.anaplan.engineering.kazuki.core.NearestMinuteTime_Module.mk_NearestMinuteTime
 import com.anaplan.engineering.kazuki.core.NonEmptyCaselessString_Module.mk_NonEmptyCaselessString
 import com.anaplan.engineering.kazuki.core.Time_Module.mk_Time
+import com.anaplan.engineering.kazuki.core.WorkingTime_Module.mk_WorkingTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -146,7 +150,12 @@ class TestComparisons {
             mk_Seq(toId1("hEllO"), toCaselessString("WOrlD"))
         )
         assertEquals(
-            mk_Mapping<CaselessString, CaselessString>(mk_(toNonEmptyCaselessString("HelLo"), toCaselessString("wOrLd"))),
+            mk_Mapping<CaselessString, CaselessString>(
+                mk_(
+                    toNonEmptyCaselessString("HelLo"),
+                    toCaselessString("wOrLd")
+                )
+            ),
             mk_Mapping<CaselessString, CaselessString>(mk_(toCaselessString("hEllO"), toId2("WOrlD")))
         )
         assertEquals(
@@ -186,7 +195,12 @@ class TestComparisons {
             mk_Seq(toId3("hEllO"), toCaselessString("WOrlD"))
         )
         assertNotEquals(
-            mk_Mapping<CaselessString, CaselessString>(mk_(toNonEmptyCaselessString("HelLo"), toCaselessString("wOrLd"))),
+            mk_Mapping<CaselessString, CaselessString>(
+                mk_(
+                    toNonEmptyCaselessString("HelLo"),
+                    toCaselessString("wOrLd")
+                )
+            ),
             mk_Mapping<CaselessString, CaselessString>(mk_(toCaselessString("hEllO"), toId3("WOrlD")))
         )
         assertNotEquals(
@@ -217,10 +231,6 @@ class TestComparisons {
     private fun toId1(string: String) = mk_Id1(*string.toCharArray())
     private fun toId2(string: String) = mk_Id2(*string.toCharArray())
     private fun toId3(string: String) = mk_Id3(*string.toCharArray())
-
-    // TODO -- comparison vs ancestors for record
-    // TODO -- comparison with shared ancestor for record
-    // TODO -- comparison with overridden ancestor for record
 
     @Test
     fun time_equals() {
@@ -265,5 +275,138 @@ class TestComparisons {
         )
     }
 
+    @Test
+    fun time_descendant_noOverride_equals() {
+        assertEquals(mk_Time(15, 23, 13, Time.Zone.GMT), mk_AfternoonTime(16, 23, 13, Time.Zone.CET))
+        assertEquals(mk_EveningTime(19, 23, 13, Time.Zone.GMT), mk_Time(19, 23, 13, Time.Zone.GMT))
+        assertEquals(mk_AfternoonTime(13, 36, 18, Time.Zone.EST), mk_EveningTime(18, 36, 18, Time.Zone.GMT))
+    }
 
+    @Test
+    fun time_descendant_siblings_equals() {
+        assertEquals<Time>(mk_AfternoonTime(15, 23, 13, Time.Zone.GMT), mk_WorkingTime(16, 23, 13, Time.Zone.CET))
+        assertEquals<Time>(mk_WorkingTime(13, 36, 18, Time.Zone.EST), mk_AfternoonTime(18, 36, 18, Time.Zone.GMT))
+    }
+
+    @Test
+    fun time_descendant_override_equals() {
+        assertEquals(mk_NearestMinuteTime(15, 23, 13, Time.Zone.GMT), mk_NearestMinuteTime(16, 23, 13, Time.Zone.CET))
+        assertEquals(mk_NearestMinuteTime(13, 36, 48, Time.Zone.EST), mk_NearestMinuteTime(18, 36, 18, Time.Zone.GMT))
+    }
+
+    @Test
+    fun time_descendant_noOverride_notEquals() {
+        assertNotEquals(mk_Time(15, 23, 13, Time.Zone.GMT), mk_AfternoonTime(16, 23, 14, Time.Zone.CET))
+        assertNotEquals(mk_EveningTime(19, 24, 13, Time.Zone.GMT), mk_Time(19, 23, 13, Time.Zone.GMT))
+        assertNotEquals(mk_AfternoonTime(14, 36, 18, Time.Zone.EST), mk_EveningTime(18, 36, 18, Time.Zone.GMT))
+    }
+
+    @Test
+    fun time_descendant_siblings_notEquals() {
+        assertNotEquals<Time>(mk_AfternoonTime(15, 24, 13, Time.Zone.GMT), mk_WorkingTime(16, 23, 13, Time.Zone.CET))
+        assertNotEquals<Time>(mk_WorkingTime(13, 36, 18, Time.Zone.EST), mk_AfternoonTime(19, 36, 18, Time.Zone.GMT))
+    }
+
+    @Test
+    fun time_descendant_override_notEquals() {
+        assertNotEquals(mk_Time(15, 23, 13, Time.Zone.GMT), mk_NearestMinuteTime(16, 23, 13, Time.Zone.CET))
+        assertNotEquals<Time>(
+            mk_NearestMinuteTime(15, 23, 13, Time.Zone.GMT),
+            mk_AfternoonTime(16, 23, 13, Time.Zone.CET)
+        )
+        assertNotEquals(
+            mk_NearestMinuteTime(13, 36, 48, Time.Zone.EST),
+            mk_NearestMinuteTime(18, 37, 18, Time.Zone.GMT)
+        )
+    }
+
+    @Test
+    fun time_descendant_noOverride_hash() {
+        assertEquals(1, mk_Set(mk_Time(15, 23, 13, Time.Zone.GMT), mk_AfternoonTime(16, 23, 13, Time.Zone.CET)).card)
+        assertEquals(1, mk_Set(mk_EveningTime(19, 23, 13, Time.Zone.GMT), mk_Time(19, 23, 13, Time.Zone.GMT)).card)
+        
+        assertEquals(6, mk_Mapping(mk_(mk_AfternoonTime(13, 36, 18, Time.Zone.EST), 6))[mk_EveningTime(18, 36, 18, Time.Zone.GMT)])
+        assertEquals(6, mk_Mapping(mk_(mk_Time(15, 23, 13, Time.Zone.GMT), 6))[mk_WorkingTime(10, 23, 13, Time.Zone.EST)])
+    }
+
+    @Test
+    fun time_descendant_siblings_hash() {
+        assertEquals(1, mk_Set(mk_AfternoonTime(15, 23, 13, Time.Zone.GMT), mk_WorkingTime(16, 23, 13, Time.Zone.CET)).card)
+        assertEquals(1, mk_Set(mk_WorkingTime(13, 36, 18, Time.Zone.EST), mk_AfternoonTime(18, 36, 18, Time.Zone.GMT)).card)
+
+        assertEquals(6, mk_Mapping<Time, Int>(mk_(mk_AfternoonTime(13, 36, 18, Time.Zone.EST), 6))[mk_WorkingTime(13, 36, 18, Time.Zone.EST)])
+        assertEquals(6, mk_Mapping<Time, Int>(mk_(mk_WorkingTime(10, 23, 13, Time.Zone.EST), 6))[mk_AfternoonTime(16, 23, 13, Time.Zone.CET)])
+    }
+
+    @Test
+    fun time_descendant_override_hash() {
+        assertEquals(1, mk_Set(mk_NearestMinuteTime(15, 23, 13, Time.Zone.GMT), mk_NearestMinuteTime(16, 23, 13, Time.Zone.CET)).card)
+        assertEquals(2, mk_Set(mk_NearestMinuteTime(13, 36, 48, Time.Zone.EST), mk_Time(18, 36, 18, Time.Zone.GMT)).card)
+
+        assertEquals(6, mk_Mapping<Time, Int>(mk_(mk_NearestMinuteTime(13, 36, 18, Time.Zone.EST), 6))[mk_NearestMinuteTime(13, 36, 18, Time.Zone.EST)])
+        causesPreconditionFailure {
+            mk_Mapping<Time, Int>(mk_(mk_WorkingTime(10, 23, 13, Time.Zone.EST), 6))[mk_NearestMinuteTime(16, 23, 13, Time.Zone.CET)]
+        }
+    }
+
+    @Test
+    fun time_descendant_noOverride_nested() {
+        assertEquals(
+            mk_Set(mk_Time(21, 23, 13, Time.Zone.GMT), mk_AfternoonTime(16, 28, 13, Time.Zone.CET)),
+            mk_Set(mk_AfternoonTime(15, 28, 13, Time.Zone.GMT), mk_EveningTime(22, 23, 13, Time.Zone.CET))
+        )
+        assertEquals<Sequence<Time>>(
+            mk_Seq(mk_AfternoonTime(16, 28, 13, Time.Zone.GMT), mk_Time(17, 23, 13, Time.Zone.EST)),
+            mk_Seq(mk_AfternoonTime(17, 28, 13, Time.Zone.CET), mk_EveningTime(22, 23, 13, Time.Zone.GMT))
+        )
+        assertEquals(
+            mk_Flight(mk_EveningTime(19, 23, 13, Time.Zone.GMT)),
+            mk_Flight(mk_Time(19, 23, 13, Time.Zone.GMT))
+        )
+    }
+
+    @Test
+    fun time_descendant_siblings_nested() {
+        assertEquals(
+            mk_Set(mk_WorkingTime(15, 23, 13, Time.Zone.GMT), mk_AfternoonTime(16, 28, 13, Time.Zone.CET)),
+            mk_Set(mk_WorkingTime(15, 28, 13, Time.Zone.GMT), mk_AfternoonTime(16, 23, 13, Time.Zone.CET))
+        )
+        assertEquals<Sequence<Time>>(
+            mk_Seq(mk_AfternoonTime(16, 28, 13, Time.Zone.CET), mk_WorkingTime(15, 23, 13, Time.Zone.GMT)),
+            mk_Seq(mk_WorkingTime(15, 28, 13, Time.Zone.GMT), mk_AfternoonTime(16, 23, 13, Time.Zone.CET))
+        )
+        assertEquals(
+            mk_Flight(mk_EveningTime(19, 23, 13, Time.Zone.GMT)),
+            mk_Flight(mk_WorkingTime(14, 23, 13, Time.Zone.EST))
+        )
+    }
+
+    @Test
+    fun time_descendant_override_nested() {
+        assertEquals(
+            mk_Set(mk_NearestMinuteTime(15, 23, 28, Time.Zone.GMT), mk_NearestMinuteTime(16, 28, 13, Time.Zone.CET)),
+            mk_Set(mk_NearestMinuteTime(15, 28, 14, Time.Zone.GMT), mk_NearestMinuteTime(16, 23, 14, Time.Zone.CET))
+        )
+        assertEquals<Sequence<Time>>(
+            mk_Seq(mk_NearestMinuteTime(16, 28, 28, Time.Zone.CET), mk_NearestMinuteTime(15, 23, 45, Time.Zone.GMT)),
+            mk_Seq(mk_NearestMinuteTime(15, 28, 13, Time.Zone.GMT), mk_NearestMinuteTime(16, 23, 13, Time.Zone.CET))
+        )
+        assertEquals(
+            mk_Flight(mk_NearestMinuteTime(19, 23, 28, Time.Zone.GMT)),
+            mk_Flight(mk_NearestMinuteTime(14, 23, 13, Time.Zone.EST))
+        )
+
+        assertNotEquals(
+            mk_Set(mk_WorkingTime(15, 23, 14, Time.Zone.GMT), mk_NearestMinuteTime(16, 28, 13, Time.Zone.CET)),
+            mk_Set(mk_NearestMinuteTime(15, 28, 13, Time.Zone.GMT), mk_NearestMinuteTime(16, 23, 14, Time.Zone.CET))
+        )
+        assertNotEquals<Sequence<Time>>(
+            mk_Seq(mk_NearestMinuteTime(16, 28, 28, Time.Zone.CET), mk_NearestMinuteTime(15, 23, 45, Time.Zone.GMT)),
+            mk_Seq(mk_NearestMinuteTime(15, 28, 28, Time.Zone.GMT), mk_AfternoonTime(16, 23, 45, Time.Zone.CET))
+        )
+        assertNotEquals(
+            mk_Flight(mk_EveningTime(19, 23, 28, Time.Zone.GMT)),
+            mk_Flight(mk_NearestMinuteTime(14, 23, 28, Time.Zone.EST))
+        )
+    }
 }

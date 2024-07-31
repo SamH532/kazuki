@@ -102,7 +102,7 @@ private fun TypeSpec.Builder.addSequenceType(
                 )
                 .lazy("%M(1 .. len)", correspondingSetConstructor).build()
         )
-        val comparableWith = addComparableWith(interfaceClassDcl, Sequence::class, processingState)
+        val comparableWith = addComparableWith(interfaceClassDcl, Sequence::class.asClassName(), processingState)
         addFunctionProviders(functionProviderProperties, interfaceTypeParameterResolver)
 
         // N.B. it is important to have properties before init block
@@ -203,8 +203,6 @@ private fun TypeSpec.Builder.addSequenceType(
                     addStatement("return false")
                     endControlFlow()
 
-                    // TODO - use _KSequence.comparableWith to hold the comparable base for this
-                    // TODO - use similar to replace isRelated in record type
                     beginControlFlow(
                         "if (!(%N.%N.isInstance(this) && this.%N.isInstance(%N)))",
                         equalsParameterName,

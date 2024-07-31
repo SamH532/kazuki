@@ -1,5 +1,8 @@
 package com.anaplan.engineering.kazuki.core
 
+import com.anaplan.engineering.kazuki.core.OtherRecord_Module.mk_OtherRecord
+import com.anaplan.engineering.kazuki.core.Comparable
+
 @Module
 interface Record {
     val a: Int
@@ -38,6 +41,9 @@ interface RecordInvOnlyExtension : Record {
 @Module
 interface OtherRecord {
     val a: Int
+
+    @Comparable
+    val onlyOther get() = mk_OtherRecord(a)
 }
 
 @Module

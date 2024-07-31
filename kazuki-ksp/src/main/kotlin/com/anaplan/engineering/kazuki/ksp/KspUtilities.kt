@@ -1,4 +1,4 @@
-@file:OptIn(KspExperimental::class, KspExperimental::class)
+@file:OptIn(KspExperimental::class, KspExperimental::class, KspExperimental::class)
 
 package com.anaplan.engineering.kazuki.ksp
 

@@ -20,12 +20,12 @@ internal data class ComparableWith(
 
 internal fun TypeSpec.Builder.addComparableWith(
     classDcl: KSClassDeclaration,
-    default: KClass<*>,
+    default: ClassName,
     processingState: KazukiSymbolProcessor.ProcessingState
 ): ComparableWith {
     val comparableProperty = getComparableProperty(classDcl, processingState)
     val comparableWithClass = if (comparableProperty == null) {
-        default.asClassName()
+        default
     } else {
         val comparableClassDcl = comparableProperty.parentDeclaration as KSClassDeclaration
         comparableClassDcl.toClassName()

@@ -77,6 +77,37 @@ interface Time {
 }
 
 @Module
+interface WorkingTime: Time {
+
+    @Invariant
+    fun inWorkingHours() = h in 9 .. 17
+}
+
+@Module
+interface AfternoonTime: Time {
+
+    @Invariant
+    fun afternoon() = h >= 12
+
+}
+
+@Module
+interface EveningTime: AfternoonTime {
+
+    @Invariant
+    fun evening() = h >= 18
+
+}
+
+@Module
+interface NearestMinuteTime: Time {
+
+    @Comparable
+    val nearestMinute get() = mk_(h - z.offset, m)
+
+}
+
+@Module
 interface Flight {
     val departsAt: Time
 }

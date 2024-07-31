@@ -4,6 +4,7 @@ import com.squareup.kotlinpoet.MemberName
 
 internal object InbuiltNames {
     internal const val corePackage = "com.anaplan.engineering.kazuki.core"
+    internal const val coreInternalPackage = "com.anaplan.engineering.kazuki.core.internal"
 
     internal val mkSet = MemberName(corePackage, "mk_Set")
     internal val mkSet1 = MemberName(corePackage, "mk_Set1")
