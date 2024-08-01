@@ -3,6 +3,7 @@ package com.anaplan.engineering.kazuki.ksp
 import com.anaplan.engineering.kazuki.core.*
 import com.anaplan.engineering.kazuki.core.internal._KInjectiveMapping
 import com.anaplan.engineering.kazuki.core.internal._KMapping
+import com.anaplan.engineering.kazuki.core.internal._KRelation
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.isAnnotationPresent
@@ -143,6 +144,8 @@ private fun TypeSpec.Builder.addMappingType(
                     ).build()
             )
         }
+        // TODO -- should this be Set? -- need _KRelation to extened _KSet if so
+        val comparableWith = addComparableWith(interfaceClassDcl, Relation::class.asClassName(), processingState)
         addFunctionProviders(functionProviderProperties, interfaceTypeParameterResolver)
 
         // N.B. it is important to have properties before init block
@@ -217,7 +220,14 @@ private fun TypeSpec.Builder.addMappingType(
         )
         addFunction(
             FunSpec.builder("hashCode").addModifiers(KModifier.OVERRIDE)
-                .returns(Int::class).addStatement("return %N.hashCode()", baseMapPropertyName).build()
+                .returns(Int::class).apply {
+                    val hashPropertyName = if (comparableWith.property == null) {
+                        baseSetPropertyName
+                    } else {
+                        comparableWith.property.simpleName.getShortName()
+                    }
+                    addStatement("return %N.hashCode()", hashPropertyName)
+                }.build()
         )
         addFunction(
             FunSpec.builder("isEmpty").addModifiers(KModifier.OVERRIDE)
@@ -243,15 +253,36 @@ private fun TypeSpec.Builder.addMappingType(
                     endControlFlow()
 
                     beginControlFlow(
-                        "if (%N !is %T)", equalsParameterName, Relation::class.asTypeName().parameterizedBy(
-                            STAR, STAR
-                        )
+                        "if (%N !is %T)",
+                        equalsParameterName,
+                        // TODO -- see comment above about Set
+                        _KRelation::class.asClassName().parameterizedBy(STAR, STAR, STAR)
                     )
                     addStatement("return false")
                     endControlFlow()
 
-                    addStatement("return %N == %N", baseSetPropertyName, equalsParameterName)
+                    beginControlFlow(
+                        "if (!(%N.%N.isInstance(this) && this.%N.isInstance(%N)))",
+                        equalsParameterName,
+                        comparableWithPropertyName,
+                        comparableWithPropertyName,
+                        equalsParameterName
+                    )
+                    addStatement("return false")
+                    endControlFlow()
 
+                    if (comparableWith.property == null) {
+                        addStatement("return %N == %N.%N", baseSetPropertyName, equalsParameterName, baseSetPropertyName)
+                    } else {
+                        val comparablePropertyName = comparableWith.property.simpleName.getShortName()
+                        addStatement(
+                            "return this.%N == (%N as %T).%N",
+                            comparablePropertyName,
+                            equalsParameterName,
+                            comparableWith.className,
+                            comparablePropertyName
+                        )
+                    }
                 }.build()).build()
         )
     }.build()

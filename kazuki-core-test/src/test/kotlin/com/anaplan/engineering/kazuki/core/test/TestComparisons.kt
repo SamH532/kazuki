@@ -9,12 +9,19 @@ import com.anaplan.engineering.kazuki.core.Flight_Module.mk_Flight
 import com.anaplan.engineering.kazuki.core.Id1_Module.mk_Id1
 import com.anaplan.engineering.kazuki.core.Id2_Module.mk_Id2
 import com.anaplan.engineering.kazuki.core.Id3_Module.mk_Id3
+import com.anaplan.engineering.kazuki.core.IntRecord1_Module.mk_IntRecord1
+import com.anaplan.engineering.kazuki.core.IntRecord2_Module.mk_IntRecord2
+import com.anaplan.engineering.kazuki.core.IntRecord3_Module.mk_IntRecord3
+import com.anaplan.engineering.kazuki.core.IntRecord4_Module.mk_IntRecord4
+import com.anaplan.engineering.kazuki.core.IntRecord5_Module.mk_IntRecord5
 import com.anaplan.engineering.kazuki.core.NearestMinuteTime_Module.mk_NearestMinuteTime
 import com.anaplan.engineering.kazuki.core.NonEmptyCaselessString_Module.mk_NonEmptyCaselessString
 import com.anaplan.engineering.kazuki.core.Time_Module.mk_Time
 import com.anaplan.engineering.kazuki.core.WorkingTime_Module.mk_WorkingTime
+import junit.framework.TestCase.assertTrue
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 
 class TestComparisons {
@@ -237,6 +244,7 @@ class TestComparisons {
         assertEquals(mk_Time(15, 23, 13, Time.Zone.GMT), mk_Time(16, 23, 13, Time.Zone.CET))
         assertEquals(mk_Time(15, 23, 13, Time.Zone.GMT), mk_Time(15, 23, 13, Time.Zone.GMT))
         assertEquals(mk_Time(10, 36, 18, Time.Zone.EST), mk_Time(15, 36, 18, Time.Zone.GMT))
+        assertEquals(mk_Time(22, 36, 18, Time.Zone.EST), mk_Time(3, 36, 18, Time.Zone.GMT))
     }
 
     @Test
@@ -324,28 +332,78 @@ class TestComparisons {
     fun time_descendant_noOverride_hash() {
         assertEquals(1, mk_Set(mk_Time(15, 23, 13, Time.Zone.GMT), mk_AfternoonTime(16, 23, 13, Time.Zone.CET)).card)
         assertEquals(1, mk_Set(mk_EveningTime(19, 23, 13, Time.Zone.GMT), mk_Time(19, 23, 13, Time.Zone.GMT)).card)
-        
-        assertEquals(6, mk_Mapping(mk_(mk_AfternoonTime(13, 36, 18, Time.Zone.EST), 6))[mk_EveningTime(18, 36, 18, Time.Zone.GMT)])
-        assertEquals(6, mk_Mapping(mk_(mk_Time(15, 23, 13, Time.Zone.GMT), 6))[mk_WorkingTime(10, 23, 13, Time.Zone.EST)])
+
+        assertEquals(
+            6,
+            mk_Mapping(mk_(mk_AfternoonTime(13, 36, 18, Time.Zone.EST), 6))[mk_EveningTime(18, 36, 18, Time.Zone.GMT)]
+        )
+        assertEquals(
+            6,
+            mk_Mapping(mk_(mk_Time(15, 23, 13, Time.Zone.GMT), 6))[mk_WorkingTime(10, 23, 13, Time.Zone.EST)]
+        )
     }
 
     @Test
     fun time_descendant_siblings_hash() {
-        assertEquals(1, mk_Set(mk_AfternoonTime(15, 23, 13, Time.Zone.GMT), mk_WorkingTime(16, 23, 13, Time.Zone.CET)).card)
-        assertEquals(1, mk_Set(mk_WorkingTime(13, 36, 18, Time.Zone.EST), mk_AfternoonTime(18, 36, 18, Time.Zone.GMT)).card)
+        assertEquals(
+            1,
+            mk_Set(mk_AfternoonTime(15, 23, 13, Time.Zone.GMT), mk_WorkingTime(16, 23, 13, Time.Zone.CET)).card
+        )
+        assertEquals(
+            1,
+            mk_Set(mk_WorkingTime(13, 36, 18, Time.Zone.EST), mk_AfternoonTime(18, 36, 18, Time.Zone.GMT)).card
+        )
 
-        assertEquals(6, mk_Mapping<Time, Int>(mk_(mk_AfternoonTime(13, 36, 18, Time.Zone.EST), 6))[mk_WorkingTime(13, 36, 18, Time.Zone.EST)])
-        assertEquals(6, mk_Mapping<Time, Int>(mk_(mk_WorkingTime(10, 23, 13, Time.Zone.EST), 6))[mk_AfternoonTime(16, 23, 13, Time.Zone.CET)])
+        assertEquals(
+            6,
+            mk_Mapping<Time, Int>(mk_(mk_AfternoonTime(13, 36, 18, Time.Zone.EST), 6))[mk_WorkingTime(
+                13,
+                36,
+                18,
+                Time.Zone.EST
+            )]
+        )
+        assertEquals(
+            6,
+            mk_Mapping<Time, Int>(mk_(mk_WorkingTime(10, 23, 13, Time.Zone.EST), 6))[mk_AfternoonTime(
+                16,
+                23,
+                13,
+                Time.Zone.CET
+            )]
+        )
     }
 
     @Test
     fun time_descendant_override_hash() {
-        assertEquals(1, mk_Set(mk_NearestMinuteTime(15, 23, 13, Time.Zone.GMT), mk_NearestMinuteTime(16, 23, 13, Time.Zone.CET)).card)
-        assertEquals(2, mk_Set(mk_NearestMinuteTime(13, 36, 48, Time.Zone.EST), mk_Time(18, 36, 18, Time.Zone.GMT)).card)
+        assertEquals(
+            1,
+            mk_Set(
+                mk_NearestMinuteTime(15, 23, 13, Time.Zone.GMT),
+                mk_NearestMinuteTime(16, 23, 13, Time.Zone.CET)
+            ).card
+        )
+        assertEquals(
+            2,
+            mk_Set(mk_NearestMinuteTime(13, 36, 48, Time.Zone.EST), mk_Time(18, 36, 18, Time.Zone.GMT)).card
+        )
 
-        assertEquals(6, mk_Mapping<Time, Int>(mk_(mk_NearestMinuteTime(13, 36, 18, Time.Zone.EST), 6))[mk_NearestMinuteTime(13, 36, 18, Time.Zone.EST)])
+        assertEquals(
+            6,
+            mk_Mapping<Time, Int>(mk_(mk_NearestMinuteTime(13, 36, 18, Time.Zone.EST), 6))[mk_NearestMinuteTime(
+                13,
+                36,
+                18,
+                Time.Zone.EST
+            )]
+        )
         causesPreconditionFailure {
-            mk_Mapping<Time, Int>(mk_(mk_WorkingTime(10, 23, 13, Time.Zone.EST), 6))[mk_NearestMinuteTime(16, 23, 13, Time.Zone.CET)]
+            mk_Mapping<Time, Int>(mk_(mk_WorkingTime(10, 23, 13, Time.Zone.EST), 6))[mk_NearestMinuteTime(
+                16,
+                23,
+                13,
+                Time.Zone.CET
+            )]
         }
     }
 
@@ -408,5 +466,27 @@ class TestComparisons {
             mk_Flight(mk_EveningTime(19, 23, 28, Time.Zone.GMT)),
             mk_Flight(mk_NearestMinuteTime(14, 23, 28, Time.Zone.EST))
         )
+    }
+
+    @Test
+    fun intRecordExample() {
+        val i1 = mk_IntRecord1(8, "a")
+        val i2 = mk_IntRecord2(8, "a")
+        val i3 = mk_IntRecord3(8, "a")
+        val i4 = mk_IntRecord4(8, "a")
+        val i5 = mk_IntRecord5(8, "a")
+        assertTrue(i1 == i2)
+        assertEquals(i3, i4)
+        assertEquals(i5, i5)
+
+        assertFalse(i1 == i3)
+        assertFalse(i1 == i4)
+        assertFalse(i1 == i5)
+        assertFalse(i2 == i3)
+        assertFalse(i2 == i4)
+        assertFalse(i1 == i5)
+
+        assertNotEquals(i3, i5)
+        assertNotEquals(i4, i5)
     }
 }

@@ -1,8 +1,5 @@
 package com.anaplan.engineering.kazuki.core
 
-import com.anaplan.engineering.kazuki.core.OtherRecord_Module.mk_OtherRecord
-import com.anaplan.engineering.kazuki.core.Comparable
-
 @Module
 interface Record {
     val a: Int
@@ -39,11 +36,9 @@ interface RecordInvOnlyExtension : Record {
 }
 
 @Module
+@ComparableTypeLimit
 interface OtherRecord {
     val a: Int
-
-    @Comparable
-    val onlyOther get() = mk_OtherRecord(a)
 }
 
 @Module
@@ -63,11 +58,11 @@ interface GenericRecordInvOnlyExtension : GenericRecord<Int> {
 }
 
 @Module
+@ComparableTypeLimit
 interface OtherGenericRecord<T> {
     val a: T
 }
 
-// TODO - incorrect ordering
 @Module
 interface RecordDblExtension: RecordExtension, Tuple3<Int, String, Double> {
     val c: Double

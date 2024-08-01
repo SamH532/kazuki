@@ -42,6 +42,8 @@ interface _KInjectiveMapping<D, R, M : InjectiveMapping<D, R>> : InjectiveMappin
 // TODO - generate impls for consistency
 internal class __KMapping<D, R>(override val baseMap: Map<D, R>) : _KMapping<D, R, Mapping<D, R>> {
 
+    override val comparableWith = Set::class
+
     override fun construct(base: Map<D, R>) = __KMapping(base)
 
     override fun get(d: D) = baseMap.get(d) ?: throw PreconditionFailure("$d not in mapping domain")
@@ -74,6 +76,8 @@ internal class __KMapping<D, R>(override val baseMap: Map<D, R>) : _KMapping<D, 
 internal class __KInjectiveMapping<D, R>(override val baseMap: Map<D, R>) : InjectiveMapping<D, R>, _KInjectiveMapping<D, R, InjectiveMapping<D, R>> {
 
     protected fun isValid(): Boolean = noDuplicatesInRange()
+
+    override val comparableWith = Set::class
 
     override fun construct(base: Map<D, R>) = __KInjectiveMapping(base)
 
@@ -115,6 +119,8 @@ internal class __KInjectiveMapping<D, R>(override val baseMap: Map<D, R>) : Inje
 internal class __KInjectiveMapping1<D, R>(override val baseMap: Map<D, R>) : InjectiveMapping1<D, R>, _KInjectiveMapping<D, R, InjectiveMapping1<D, R>> {
 
     protected fun isValid(): Boolean = noDuplicatesInRange() && atLeastOneElement()
+
+    override val comparableWith = Set::class
 
     override fun construct(base: Map<D, R>) = __KInjectiveMapping1(base)
 
@@ -160,6 +166,8 @@ internal class __KMapping1<D, R>(override val baseMap: Map<D, R>) : Mapping1<D, 
     _KMapping<D, R, Mapping1<D, R>> {
 
     protected fun isValid(): Boolean = atLeastOneElement()
+
+    override val comparableWith = Set::class
 
     override fun get(d: D) = baseMap.get(d) ?: throw PreconditionFailure("$d not in mapping domain")
 

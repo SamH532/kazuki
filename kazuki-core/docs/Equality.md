@@ -54,16 +54,84 @@ Then `i1 == i2` as they both represent the same tuple.
 
 ### Limit to type
 
-TODO - Implement
+The simplest form of customization is to add a comparable type limit.
+By adding a `@ComparableTypeLimit` annotation to a module you indicate that it is only comparable with other instances of that type.
 
-TODO - Examples
+If an ancestor does not have an explicit comparable type limit than the basic type described in the previous section forms the limit.
+
+For instance, if we have:
+```
+
+@ComparableTypeLimit
+@Module
+interface IntRecord3 {
+    val f: Int
+    val b: String
+}
+
+@Module
+interface IntRecord4: IntRecord3
+
+
+@ComparableTypeLimit
+@Module
+interface IntRecord5: IntRecord4
+
+val i3 = mk_IntRecord3(8, "a")
+val i4 = mk_IntRecord4(8, "a")
+val i5 = mk_IntRecord5(8, "a")
+
+```
+
+Then the comparable type limit:
+* for `IntRecord1` and `IntRecord2` is `Tuple2`
+* for `IntRecord3` and `IntRecord4` is `IntRecord3`
+* for `IntRecord5` is `IntRecord3`
+
+And so:
+* `i3 == i4` as they have the same comparable type limit
+* `i3 != i2` and `i3 != i1` as they do not have the same comparable type limit
+* `i3 != i5` and `i4 != i5` as they do not have the same comparable type limit
+
+Note:
+* Defining a comparable type limit will replace any inherited comparable type limit.
+* It is forbidden for a type to inherit comparable type limit from unrelated ancestors; if the scenario arises it is likely that the joining module should be marked as new comparable type limit.
 
 ### Module specific relation
 
 If you wish to define an equality relation specific to a module, you can define a property to use for comparison that
 will replace the default.
+This is done by adding a `@ComparableProperty` annotation to a property of a module that will be used to make an alternative instance for comparison.
 
-TODO - Examples
+For example, the following module defines a zone based time that resolves the time difference when determining equality :
+
+```
+@Module
+interface Time {
+    val h: Int
+    val m: Int
+    val s: Int
+    val z: Zone
+
+    @Invariant
+    fun validHour() = h in 0..23
+
+    @Invariant
+    fun validMinute() = m in 0..59
+
+    @Invariant
+    fun validSecond() = s in 0..59
+
+    @ComparableProperty
+    val asUtc get() = mk_((h - z.offset) % 24, m, s)
+
+    enum class Zone(val offset: Int) {
+        GMT(0),
+        CET(1),
+        EST(-5)
+    }
+}
+```
 
 Note:
 

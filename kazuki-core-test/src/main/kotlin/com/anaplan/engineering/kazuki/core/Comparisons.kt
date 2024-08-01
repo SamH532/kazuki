@@ -5,7 +5,7 @@ package com.anaplan.engineering.kazuki.core
 interface CaselessString : Sequence<Char> {
 
     // TODO -- implement comparable operators if object is comparable
-    @Comparable
+    @ComparableProperty
     val uppercase get() = seq(this) { it.uppercase() }
 
 }
@@ -38,7 +38,7 @@ interface Id3 : NonEmptyCaselessString {
     fun firstCharNotDollar() = first() != '$'
 
     // Id3 is incomparable with Id1 or Id2 as it defines a new relation
-    @Comparable
+    @ComparableProperty
     val uppercaseIgnoreSpace get() = seq(this, filter = { !it.isWhitespace() }) { it.uppercase() }
 }
 
@@ -66,8 +66,8 @@ interface Time {
     @Invariant
     fun validSecond() = s in 0..59
 
-    @Comparable
-    val asUtc get() = mk_(h - z.offset, m, s)
+    @ComparableProperty
+    val asUtc get() = mk_((h - z.offset) % 24, m, s)
 
     enum class Zone(val offset: Int) {
         GMT(0),
@@ -77,14 +77,14 @@ interface Time {
 }
 
 @Module
-interface WorkingTime: Time {
+interface WorkingTime : Time {
 
     @Invariant
-    fun inWorkingHours() = h in 9 .. 17
+    fun inWorkingHours() = h in 9..17
 }
 
 @Module
-interface AfternoonTime: Time {
+interface AfternoonTime : Time {
 
     @Invariant
     fun afternoon() = h >= 12
@@ -92,7 +92,7 @@ interface AfternoonTime: Time {
 }
 
 @Module
-interface EveningTime: AfternoonTime {
+interface EveningTime : AfternoonTime {
 
     @Invariant
     fun evening() = h >= 18
@@ -100,9 +100,9 @@ interface EveningTime: AfternoonTime {
 }
 
 @Module
-interface NearestMinuteTime: Time {
+interface NearestMinuteTime : Time {
 
-    @Comparable
+    @ComparableProperty
     val nearestMinute get() = mk_(h - z.offset, m)
 
 }
@@ -112,6 +112,33 @@ interface Flight {
     val departsAt: Time
 }
 
+
+@ComparableTypeLimit
+@Module
+interface IntRecord3 {
+    val f: Int
+    val b: String
+}
+
+@Module
+interface IntRecord4: IntRecord3
+
+
+@Module
+interface IntRecord1 {
+    val f: Int
+    val b: String
+}
+
+@Module
+interface IntRecord2 {
+    val g: Int
+    val c: String
+}
+
+@ComparableTypeLimit
+@Module
+interface IntRecord5: IntRecord4
 
 
 
