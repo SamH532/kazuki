@@ -1,5 +1,10 @@
+@file:OptIn(KspExperimental::class, KspExperimental::class, KspExperimental::class)
+
 package com.anaplan.engineering.kazuki.ksp
 
+import com.anaplan.engineering.kazuki.core.Module
+import com.google.devtools.ksp.KspExperimental
+import com.google.devtools.ksp.isAnnotationPresent
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSTypeArgument
 import com.google.devtools.ksp.symbol.KSTypeParameter
@@ -12,12 +17,12 @@ import kotlin.reflect.KClass
 
 // TODO -- extract KSP utilities to separate project and test independently!
 
-internal fun KSClassDeclaration.allSuperTypes(): Set<KSTypeReference> =
+internal val KSClassDeclaration.allSuperTypes get(): Set<KSTypeReference> =
     superTypes.flatMap {
         val st = it.resolve().declaration
         mutableSetOf(it).apply {
             if (st is KSClassDeclaration) {
-                addAll(st.allSuperTypes())
+                addAll(st.allSuperTypes)
             }
         }
     }.toSet()
@@ -45,6 +50,8 @@ internal fun KSTypeReference.getSuperTypePathTo(klass: KClass<*>): List<KSTypeRe
         }.filterNotNull().firstOrNull()
     }
 }
+
+val KSClassDeclaration.superModules get() = allSuperTypes.filter { it.resolve().declaration.isAnnotationPresent(Module::class) }
 
 fun KSClassDeclaration.resolveTypeNameOfAncestorGenericParameter(
     ancestorKClass: KClass<*>,

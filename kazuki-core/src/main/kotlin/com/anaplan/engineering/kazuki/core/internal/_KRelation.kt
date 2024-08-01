@@ -3,11 +3,14 @@ package com.anaplan.engineering.kazuki.core.internal
 import com.anaplan.engineering.kazuki.core.PreconditionFailure
 import com.anaplan.engineering.kazuki.core.Relation
 import com.anaplan.engineering.kazuki.core.Tuple2
+import kotlin.reflect.KClass
 
 interface _KRelation<D, R, T : Relation<D, R>> : Relation<D, R> {
     fun construct(baseSet: Set<Tuple2<D, R>>): T
 
     val baseSet: Set<Tuple2<D, R>>
+
+    val comparableWith: KClass<*>
 }
 
 internal fun <D, R, T : Relation<D, R>> T.transformRelation(fn: (_KRelation<D, R, T>) -> Collection<Tuple2<D, R>>): T {
@@ -19,6 +22,8 @@ internal class __KRelation<D, R>(override val baseSet: Set<Tuple2<D, R>>) : _KRe
     Set<Tuple2<D, R>> by baseSet {
 
     override fun construct(baseSet: Set<Tuple2<D, R>>) = __KRelation(baseSet)
+
+    override val comparableWith = Set::class
 
     override val dom by lazy { com.anaplan.engineering.kazuki.core.set(baseSet) { it._1 } }
 

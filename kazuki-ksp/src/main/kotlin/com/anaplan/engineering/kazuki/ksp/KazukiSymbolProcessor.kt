@@ -18,7 +18,7 @@ import com.google.devtools.ksp.validate
 class KazukiSymbolProcessor(private val environment: SymbolProcessorEnvironment) : SymbolProcessor {
 
     // TODO - auto generate tests for equals, hashcode, toString? -- maybe do with opt-in property
-    private val processingState = ProcessingState()
+    private val processingState = ProcessingState(environment)
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val allModules =
@@ -43,9 +43,10 @@ class KazukiSymbolProcessor(private val environment: SymbolProcessorEnvironment)
     }
 
 
-    class ProcessingState {
+    class ProcessingState(environment: SymbolProcessorEnvironment) {
         val primitiveInvariants: MutableMap<String, KSFunctionDeclaration> = mutableMapOf()
         val errors: MutableList<String> = mutableListOf()
+        val logger = environment.logger
 
         fun hasErrors() = errors.isNotEmpty()
     }

@@ -97,7 +97,6 @@ infix operator fun <T, S : Sequence<T>> S.plus(t: T) = transformSequence { it.el
 // TODO -- not sure this is correct, should we keep?
 infix operator fun <T, S : Sequence<T>> S.minus(s: Sequence<T>) = transformSequence { it.elements - s }
 
-// TODO -- not sure this is correct, should we keep?
 infix operator fun <T, S : Sequence<T>> S.minus(t: T) = transformSequence { it.elements - t }
 
 fun <T> Sequence<T>.first(): T {

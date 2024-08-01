@@ -36,6 +36,7 @@ interface RecordInvOnlyExtension : Record {
 }
 
 @Module
+@ComparableTypeLimit
 interface OtherRecord {
     val a: Int
 }
@@ -57,11 +58,11 @@ interface GenericRecordInvOnlyExtension : GenericRecord<Int> {
 }
 
 @Module
+@ComparableTypeLimit
 interface OtherGenericRecord<T> {
     val a: T
 }
 
-// TODO - incorrect ordering
 @Module
 interface RecordDblExtension: RecordExtension, Tuple3<Int, String, Double> {
     val c: Double

@@ -72,6 +72,7 @@ private fun TypeSpec.Builder.addSetType(
             PropertySpec.builder(elementsPropertyName, superSetTypeName, KModifier.OPEN, KModifier.OVERRIDE)
                 .initializer(elementsPropertyName).build()
         )
+        val comparableWith = addComparableWith(interfaceClassDcl, Set::class.asClassName(), processingState)
         addFunctionProviders(functionProviderProperties, interfaceTypeParameterResolver)
 
         // N.B. it is important to have properties before init block
@@ -94,8 +95,17 @@ private fun TypeSpec.Builder.addSetType(
             .returns(String::class)
             .addStatement("return \"%N\$%N\"", interfaceName, elementsPropertyName)
             .build())
-        addFunction(FunSpec.builder("hashCode").addModifiers(KModifier.OVERRIDE)
-            .returns(Int::class).addStatement("return %N.hashCode()", elementsPropertyName).build())
+        addFunction(
+            FunSpec.builder("hashCode").addModifiers(KModifier.OVERRIDE)
+                .returns(Int::class).apply {
+                    val hashPropertyName = if (comparableWith.property == null) {
+                        elementsPropertyName
+                    } else {
+                        comparableWith.property.simpleName.getShortName()
+                    }
+                    addStatement("return %N.hashCode()", hashPropertyName)
+                }.build()
+        )
         val equalsParameterName = "other"
         addFunction(FunSpec.builder("equals").addModifiers(KModifier.OVERRIDE)
             .addParameter(ParameterSpec.builder(equalsParameterName, Any::class.asTypeName().copy(nullable = true))
@@ -105,12 +115,36 @@ private fun TypeSpec.Builder.addSetType(
                 addStatement("return true")
                 endControlFlow()
 
-                beginControlFlow("if (%N !is %T)", equalsParameterName, superInterface.asTypeName().parameterizedBy(
-                    STAR))
+                beginControlFlow(
+                    "if (%N !is %T)",
+                    equalsParameterName,
+                    _KSet::class.asClassName().parameterizedBy(STAR, STAR)
+                )
                 addStatement("return false")
                 endControlFlow()
 
-                addStatement("return %N == %N", elementsPropertyName, equalsParameterName)
+                beginControlFlow(
+                    "if (!(%N.%N.isInstance(this) && this.%N.isInstance(%N)))",
+                    equalsParameterName,
+                    comparableWithPropertyName,
+                    comparableWithPropertyName,
+                    equalsParameterName
+                )
+                addStatement("return false")
+                endControlFlow()
+
+                if (comparableWith.property == null) {
+                    addStatement("return %N == %N", elementsPropertyName, equalsParameterName)
+                } else {
+                    val comparablePropertyName = comparableWith.property.simpleName.getShortName()
+                    addStatement(
+                        "return this.%N == (%N as %T).%N",
+                        comparablePropertyName,
+                        equalsParameterName,
+                        comparableWith.className,
+                        comparablePropertyName
+                    )
+                }
 
             }.build()).build())
     }.build()

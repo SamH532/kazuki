@@ -13,6 +13,7 @@ open class KazukiGenerationPluginExtension @javax.inject.Inject constructor(obje
 
 
 internal const val PackageName = "com.anaplan.engineering.kazuki.core"
+internal const val InternalPackageName = "com.anaplan.engineering.kazuki.core.internal"
 
 class KazukiGenerationPlugin : Plugin<Project> {
 

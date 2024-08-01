@@ -3,6 +3,8 @@ package com.anaplan.engineering.kazuki.ksp
 import com.anaplan.engineering.kazuki.core.FunctionProvider
 import com.anaplan.engineering.kazuki.core.Module
 import com.anaplan.engineering.kazuki.core.PreconditionFailure
+import com.anaplan.engineering.kazuki.core.internal._KSequence
+import com.anaplan.engineering.kazuki.ksp.InbuiltNames.coreInternalPackage
 import com.anaplan.engineering.kazuki.ksp.InbuiltNames.corePackage
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.isAbstract
@@ -23,7 +25,7 @@ internal fun TypeSpec.Builder.addRecordType(
     interfaceClassDcl: KSClassDeclaration,
     processingState: KazukiSymbolProcessor.ProcessingState,
 ) {
-    // TODO -- fail if class is not interface
+    // TODO -- fail if class·is·not interface
     val interfaceType = interfaceClassDcl.asType(emptyList())
     val interfaceTypeArguments = interfaceClassDcl.typeParameters.map { it.toTypeVariableName() }
     val interfaceTypeName = if (interfaceTypeArguments.isEmpty()) {
@@ -48,8 +50,7 @@ internal fun TypeSpec.Builder.addRecordType(
             TupleComponent(index, name, typeReference, typeReference.toTypeName(interfaceTypeParameterResolver))
     }
 
-    val superRecords =
-        interfaceClassDcl.allSuperTypes().filter { it.resolve().declaration.isAnnotationPresent(Module::class) }
+    val superRecords = interfaceClassDcl.superModules
 
     val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
     if (properties.any { it.isMutable }) {
@@ -96,12 +97,17 @@ internal fun TypeSpec.Builder.addRecordType(
         acc + it
     }.map { (_, v) -> v }.mapIndexed { i, b -> b.build(i + 1) }
     if (tupleComponents.isEmpty()) {
-        throw IllegalStateException("Cannot have empty record")
+        throw IllegalStateException("Record $interfaceTypeName must have fields")
     }
-    val tupleType = ClassName(corePackage, "Tuple${tupleComponents.size}").parameterizedBy(
+    val tupleClassName = ClassName(corePackage, "Tuple${tupleComponents.size}")
+    val tupleType = tupleClassName.parameterizedBy(
         tupleComponents.map { it.typeName }
     )
-    val erasedTupleType = ClassName(corePackage, "Tuple${tupleComponents.size}").parameterizedBy(
+    val internalTupleClassName = ClassName(coreInternalPackage, "_Tuple${tupleComponents.size}")
+    val internalTupleType = internalTupleClassName.parameterizedBy(
+        tupleComponents.map { it.typeName }
+    )
+    val erasedTupleType = tupleClassName.parameterizedBy(
         tupleComponents.map { STAR }
     )
     val compatibleSuperTypes =
@@ -115,7 +121,7 @@ internal fun TypeSpec.Builder.addRecordType(
         }
         addModifiers(KModifier.PRIVATE, KModifier.DATA)
         addSuperinterface(interfaceTypeName)
-        addSuperinterface(tupleType)
+        addSuperinterface(internalTupleType)
         primaryConstructor(FunSpec.constructorBuilder().apply {
             debug.forEach {
                 addComment(it)
@@ -152,7 +158,9 @@ internal fun TypeSpec.Builder.addRecordType(
         )
         addFunctionProviders(functionProviderProperties, interfaceTypeParameterResolver)
 
-        // N.B. it is important to have properties before init block
+        val comparableWith = addComparableWith(interfaceClassDcl, tupleClassName, processingState)
+
+        // N.B. it·is·important to have properties before init block
         addInvariantFrom(interfaceClassDcl, false, enforceInvariantParameterName, processingState)
 
         addFunction(
@@ -173,6 +181,17 @@ internal fun TypeSpec.Builder.addRecordType(
         )
 
         addFunction(
+            FunSpec.builder("hashCode").addModifiers(KModifier.OVERRIDE)
+                .returns(Int::class).apply {
+                    if (comparableWith.property == null) {
+                        addStatement("return ${corePackage}.mk_(${tupleComponents.joinToString(", ") { "_${it.index}" }}).hashCode()")
+                    } else {
+                        addStatement("return %N.hashCode()", comparableWith.property.simpleName.getShortName())
+                    }
+                }.build()
+        )
+
+        addFunction(
             FunSpec.builder("equals").addModifiers(KModifier.OVERRIDE)
                 .addParameter(
                     ParameterSpec.builder(otherParameterName, Any::class.asTypeName().copy(nullable = true))
@@ -187,17 +206,39 @@ internal fun TypeSpec.Builder.addRecordType(
                     addStatement("return false")
                     endControlFlow()
 
-                    // Tuple type check repeated for smart-cast
-                    beginControlFlow(
-                        "if (%N is %T && $implClassName.$isRelatedFunctionName($otherParameterName))",
-                        otherParameterName,
-                        erasedTupleType
+                    val erasedInternalTupleType = internalTupleClassName.parameterizedBy(
+                        tupleComponents.map { STAR }
                     )
-                    addStatement("return ${tupleComponents.joinToString(" && ") { "_${it.index} == $otherParameterName._${it.index}" }}")
+                    beginControlFlow(
+                        "if (%N !is %T)",
+                        otherParameterName,
+                        erasedInternalTupleType
+                    )
+                    addStatement("return false")
                     endControlFlow()
 
+                    beginControlFlow(
+                        "if (!(%N.%N.isInstance(this) && this.%N.isInstance(%N)))",
+                        otherParameterName,
+                        comparableWithPropertyName,
+                        comparableWithPropertyName,
+                        otherParameterName
+                    )
                     addStatement("return false")
+                    endControlFlow()
 
+                    if (comparableWith.property == null) {
+                        addStatement("return ${tupleComponents.joinToString(" && ") { "_${it.index} == $otherParameterName._${it.index}" }}")
+                    } else {
+                        val comparablePropertyName = comparableWith.property.simpleName.getShortName()
+                        addStatement(
+                            "return this.%N == (%N as %T).%N",
+                            comparablePropertyName,
+                            otherParameterName,
+                            comparableWith.className,
+                            comparablePropertyName
+                        )
+                    }
                 }.build()).build()
         )
 
@@ -208,7 +249,7 @@ internal fun TypeSpec.Builder.addRecordType(
                     returns(Boolean::class)
                     addModifiers(KModifier.INTERNAL)
                     addStatement(
-                        "return ${compatibleSuperTypes.joinToString(" || ") { "%N is %T" }}",
+                        "return ${compatibleSuperTypes.joinToString(" || ") { "%N·is·%T" }}",
                         *compatibleSuperTypes.flatMap { listOf(otherParameterName, it) }.toTypedArray()
                     )
                 }.build()
@@ -225,7 +266,7 @@ internal fun TypeSpec.Builder.addRecordType(
         receiver(interfaceTypeName)
         returns(tupleType)
         addCode(CodeBlock.builder().apply {
-            beginControlFlow("if (this is %T)", erasedTupleType)
+            beginControlFlow("if (this·is·%T)", erasedTupleType)
             addStatement("return this as %T", tupleType)
             nextControlFlow("else")
             addStatement(
@@ -245,7 +286,7 @@ internal fun TypeSpec.Builder.addRecordType(
             addParameter(otherParameterName, Any::class)
             returns(Boolean::class)
             addCode(CodeBlock.builder().apply {
-                beginControlFlow("if (%N !is %T)", otherParameterName, erasedTupleType)
+                beginControlFlow("if (%N·!is·%T)", otherParameterName, erasedTupleType)
                 addStatement("return false")
                 endControlFlow()
 
@@ -257,7 +298,7 @@ internal fun TypeSpec.Builder.addRecordType(
                     val type = tc.typeReference.resolve()
                     if (type.declaration !is KSTypeParameter) {
                         beginControlFlow(
-                            "if (%N._${tc.index} !is %T)",
+                            "if (%N._${tc.index}·!is·%T)",
                             otherParameterName,
                             type.starProjection().toTypeName()
                         )
@@ -317,7 +358,7 @@ internal fun TypeSpec.Builder.addRecordType(
                 addStatement(
                     "throw %T(%S)",
                     PreconditionFailure::class.asClassName(),
-                    "${otherParameterName} is not a $interfaceName"
+                    "${otherParameterName}·is·not a $interfaceName"
                 )
                 nextControlFlow("else")
                 addStatement("return as_$interfaceName($otherParameterName as %T)", tupleType)

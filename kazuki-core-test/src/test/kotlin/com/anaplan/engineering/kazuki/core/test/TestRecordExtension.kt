@@ -63,7 +63,6 @@ class TestRecordExtension {
         assertNotEquals(mk_RecordInvOnlyExtension(2), mk_RecordInvOnlyExtension(3))
         assertNotEquals(mk_RecordInvOnlyExtension(3), mk_RecordInvOnlyExtension(2))
 
-        // Making choice that type declaration is part of equality not just tuple
         assertNotEquals<Any>(mk_OtherRecord(2), mk_Record(2))
         assertNotEquals<Any>(mk_Record(2), mk_OtherRecord(2))
 
@@ -79,7 +78,6 @@ class TestRecordExtension {
         assertNotEquals(mk_GenericRecordInvOnlyExtension(2), mk_GenericRecordInvOnlyExtension(3))
         assertNotEquals(mk_GenericRecordInvOnlyExtension(3), mk_GenericRecordInvOnlyExtension(2))
 
-        // Making choice that type declaration is part of equality not just tuple
         assertNotEquals<Any>(mk_OtherGenericRecord(2), mk_GenericRecord(2))
         assertNotEquals<Any>(mk_GenericRecord(2), mk_OtherGenericRecord(2))
     }
