@@ -6,7 +6,6 @@ import com.anaplan.engineering.kazuki.core.internal._KMapping
 import com.anaplan.engineering.kazuki.core.internal._KRelation
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.isAbstract
-import com.google.devtools.ksp.isAnnotationPresent
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
@@ -52,8 +51,8 @@ private fun TypeSpec.Builder.addMappingType(
     val interfaceTypeParameterResolver = interfaceClassDcl.typeParameters.toTypeParameterResolver()
 
     val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
-    val functionProviderProperties = properties.filter { it.isAnnotationPresent(FunctionProvider::class) }
-    if ((properties - functionProviderProperties).filter { it.isAbstract() }.firstOrNull() != null) {
+    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, processingState)
+    if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }.firstOrNull() != null) {
         val propertyNames = properties.map { it.simpleName.asString() }.toList()
         processingState.errors.add("Mapping type $interfaceTypeName may not have properties: $propertyNames")
     }
@@ -146,7 +145,7 @@ private fun TypeSpec.Builder.addMappingType(
         }
         // TODO -- should this be Set? -- need _KRelation to extened _KSet if so
         val comparableWith = addComparableWith(interfaceClassDcl, Relation::class.asClassName(), processingState)
-        addFunctionProviders(functionProviderProperties, interfaceTypeParameterResolver)
+        addFunctionProviders(functionProviderProperties, processingState)
 
         // N.B. it is important to have properties before init block
         val additionalInvariantParts = if (requiresNonEmpty) listOf("card > 0") else emptyList()

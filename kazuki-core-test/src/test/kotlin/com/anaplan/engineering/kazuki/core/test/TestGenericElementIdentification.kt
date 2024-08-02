@@ -52,7 +52,7 @@ interface IntDeferredInstantiate : DeferredInstantiate<Int> {
 
 }
 
-// This tests that the correct type can be resolved for the sequence generic
+// This tests that the correct type can be resolved for the sequence generic, the 'test' is essentially successful compilation
 // TODO -- unit testing of KSClassDeclaration.resolveTypeNameOfAncestorGenericParameter
 @RunWith(Parameterized::class)
 class TestGenericElementIdentification(

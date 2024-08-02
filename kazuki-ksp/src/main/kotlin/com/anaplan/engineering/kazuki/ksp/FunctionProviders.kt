@@ -4,21 +4,54 @@ import com.anaplan.engineering.kazuki.core.FunctionProvider
 import com.google.devtools.ksp.KSTypeNotPresentException
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getAnnotationsByType
+import com.google.devtools.ksp.isAnnotationPresent
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
-import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.PropertySpec
-import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.ksp.TypeParameterResolver
+import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
+
+internal data class FunctionProviderProperty(
+    val property: KSPropertyDeclaration,
+    val typeName: TypeName,
+    val name: String = property.simpleName.asString(),
+)
 
 @OptIn(KspExperimental::class)
-fun TypeSpec.Builder.addFunctionProviders(
-    functionProviderProperties: Sequence<KSPropertyDeclaration>,
-    interfaceTypeParameterResolver: TypeParameterResolver
+internal fun getFunctionProviderProperties(
+    classDcl: KSClassDeclaration,
+    processingState: KazukiSymbolProcessor.ProcessingState,
+): Collection<FunctionProviderProperty> {
+    processingState.logger.debug("Getting function providers", classDcl)
+    val properties = classDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
+    val localTypeParameterResolver = classDcl.typeParameters.toTypeParameterResolver()
+    val localFunctionProviderProperties = properties.filter { it.isAnnotationPresent(FunctionProvider::class) }.map {
+        FunctionProviderProperty(it, it.type.toTypeName(localTypeParameterResolver))
+    }
+    val nonOverriddenSuperFunctionProviderProperties = classDcl.superModules.flatMap { type ->
+        val superClassDcl = type.resolve().declaration as KSClassDeclaration
+        val superTypeParameterResolver = superClassDcl.typeParameters.toTypeParameterResolver()
+        val superProperties = superClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
+        val superFunctionProviderProperties = superProperties.filter { it.isAnnotationPresent(FunctionProvider::class) }
+        superFunctionProviderProperties.filter { s ->
+            localFunctionProviderProperties.none { l -> s.simpleName.asString() == l.name }
+        }.map {
+            FunctionProviderProperty(it, it.type.toTypeName(superTypeParameterResolver))
+        }
+    }
+    return (localFunctionProviderProperties + nonOverriddenSuperFunctionProviderProperties).toList()
+}
+
+
+@OptIn(KspExperimental::class)
+internal fun TypeSpec.Builder.addFunctionProviders(
+    functionProviderProperties: Collection<FunctionProviderProperty>,
+    processingState: KazukiSymbolProcessor.ProcessingState,
 ) {
+    val logger = processingState.logger
     functionProviderProperties.forEach { property ->
-        val functionProvider = property.getAnnotationsByType(FunctionProvider::class).single()
+        logger.debug("Adding function provider ${property.typeName}.${property.name}")
+        val functionProvider = property.property.getAnnotationsByType(FunctionProvider::class).single()
         val providerQualifiedName = try {
             functionProvider.provider
             throw IllegalStateException("Expected to get a KSTypeNotPresentException")
@@ -27,8 +60,8 @@ fun TypeSpec.Builder.addFunctionProviders(
         }
         addProperty(
             PropertySpec.builder(
-                property.simpleName.asString(),
-                property.type.toTypeName(interfaceTypeParameterResolver),
+                property.name,
+                property.typeName,
                 KModifier.OVERRIDE
             ).apply {
                 initializer(

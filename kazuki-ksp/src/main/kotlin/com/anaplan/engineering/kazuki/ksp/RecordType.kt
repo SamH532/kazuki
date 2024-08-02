@@ -1,9 +1,7 @@
 package com.anaplan.engineering.kazuki.ksp
 
 import com.anaplan.engineering.kazuki.core.FunctionProvider
-import com.anaplan.engineering.kazuki.core.Module
 import com.anaplan.engineering.kazuki.core.PreconditionFailure
-import com.anaplan.engineering.kazuki.core.internal._KSequence
 import com.anaplan.engineering.kazuki.ksp.InbuiltNames.coreInternalPackage
 import com.anaplan.engineering.kazuki.ksp.InbuiltNames.corePackage
 import com.google.devtools.ksp.KspExperimental
@@ -50,28 +48,19 @@ internal fun TypeSpec.Builder.addRecordType(
             TupleComponent(index, name, typeReference, typeReference.toTypeName(interfaceTypeParameterResolver))
     }
 
-    val superRecords = interfaceClassDcl.superModules
-
     val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
     if (properties.any { it.isMutable }) {
         val mutableProperties = properties.filter { it.isMutable }.map { it.simpleName.asString() }.toList()
         processingState.errors.add("Record type $interfaceTypeName may not have mutable properties: $mutableProperties")
     }
 
-    val debug = mutableListOf<String>()
-    val localFunctionProviderProperties = properties.filter { it.isAnnotationPresent(FunctionProvider::class) }
-    val nonOverriddenSuperFunctionProviderProperties = superRecords.flatMap { type ->
-        val superClassDcl = type.resolve().declaration as KSClassDeclaration
-        val superProperties = superClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
-        val superFunctionProviderProperties = superProperties.filter { it.isAnnotationPresent(FunctionProvider::class) }
-        superFunctionProviderProperties.filter { s -> localFunctionProviderProperties.none { l -> s.simpleName.asString() == l.simpleName.asString() } }
-    }
-    val functionProviderProperties = localFunctionProviderProperties + nonOverriddenSuperFunctionProviderProperties
+    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, processingState)
     val recordProperties =
-        (properties - functionProviderProperties).filter { !it.isMutable && it.isAbstract() }.toList()
+        (properties - functionProviderProperties.map { it.property }).filter { !it.isMutable && it.isAbstract() }
+            .toList()
 
     val allInterfaceProperties = interfaceClassDcl.getAllProperties().toList()
-    val tupleComponentBuilders = superRecords.reversed().map { type ->
+    val tupleComponentBuilders = interfaceClassDcl.superModules.reversed().map { type ->
         val superClassDcl = type.resolve().declaration as KSClassDeclaration
         val superProperties = superClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
         val superFunctionProviderProperties = superProperties.filter { it.isAnnotationPresent(FunctionProvider::class) }
@@ -105,13 +94,15 @@ internal fun TypeSpec.Builder.addRecordType(
     )
     val internalTupleClassName = ClassName(coreInternalPackage, "_Tuple${tupleComponents.size}")
     val internalTupleType = internalTupleClassName.parameterizedBy(
-        tupleComponents.map { it.typeName }
+        tupleComponents.map { it.typeName } + interfaceTypeName
     )
     val erasedTupleType = tupleClassName.parameterizedBy(
         tupleComponents.map { STAR }
     )
     val compatibleSuperTypes =
-        (superRecords.map { it.resolve().starProjection().toTypeName() } + interfaceType.starProjection().toTypeName())
+        (interfaceClassDcl.superModules.map {
+            it.resolve().starProjection().toTypeName()
+        } + interfaceType.starProjection().toTypeName())
 
     val interfaceName = interfaceClassDcl.simpleName.asString()
     val implClassName = "${interfaceName}_Rec"
@@ -123,9 +114,6 @@ internal fun TypeSpec.Builder.addRecordType(
         addSuperinterface(interfaceTypeName)
         addSuperinterface(internalTupleType)
         primaryConstructor(FunSpec.constructorBuilder().apply {
-            debug.forEach {
-                addComment(it)
-            }
             tupleComponents.forEach { tc -> addParameter(tc.name, tc.typeName) }
             addParameter(
                 ParameterSpec.builder(enforceInvariantParameterName, Boolean::class).defaultValue("true")
@@ -151,12 +139,27 @@ internal fun TypeSpec.Builder.addRecordType(
                     .build()
             )
         }
+
+        (1..tupleComponents.size).forEach { conNary ->
+            addFunction(FunSpec.builder(constructFunctionName).apply {
+                addModifiers(KModifier.OVERRIDE)
+                (1..conNary).forEach {
+                    val tc = tupleComponents[it - 1]
+                    addParameter("t${tc.index}", tc.typeName)
+                }
+                returns(interfaceTypeName)
+                val params =
+                    (1..conNary).map { "t${tupleComponents[it - 1].index}" } + (conNary + 1..tupleComponents.size).map { "_$it" }
+                addStatement("return %N(${params.joinToString(",")})", implClassName)
+            }.build())
+        }
+
         addProperty(
             PropertySpec.builder(enforceInvariantParameterName, Boolean::class, KModifier.PRIVATE).initializer(
                 enforceInvariantParameterName
             ).build()
         )
-        addFunctionProviders(functionProviderProperties, interfaceTypeParameterResolver)
+        addFunctionProviders(functionProviderProperties, processingState)
 
         val comparableWith = addComparableWith(interfaceClassDcl, tupleClassName, processingState)
 
@@ -207,7 +210,7 @@ internal fun TypeSpec.Builder.addRecordType(
                     endControlFlow()
 
                     val erasedInternalTupleType = internalTupleClassName.parameterizedBy(
-                        tupleComponents.map { STAR }
+                        tupleComponents.map { STAR } + STAR
                     )
                     beginControlFlow(
                         "if (%N !is %T)",
@@ -358,7 +361,7 @@ internal fun TypeSpec.Builder.addRecordType(
                 addStatement(
                     "throw %T(%S)",
                     PreconditionFailure::class.asClassName(),
-                    "${otherParameterName}·is·not a $interfaceName"
+                    "${otherParameterName} is not a $interfaceName"
                 )
                 nextControlFlow("else")
                 addStatement("return as_$interfaceName($otherParameterName as %T)", tupleType)
@@ -383,21 +386,38 @@ internal fun TypeSpec.Builder.addRecordType(
 
     addFunction(
         FunSpec.builder("set").apply {
-            if (interfaceTypeArguments.isNotEmpty()) {
-                addTypeVariables(interfaceTypeArguments)
-            }
-            receiver(interfaceTypeName)
+            val t = TypeVariableName("T", bounds = listOf(interfaceTypeName))
+            addTypeVariable(t)
+            receiver(t)
             tupleComponents.forEach { tc ->
                 addParameter(ParameterSpec.builder(tc.name, tc.typeName).apply {
                     defaultValue("this.%N", tc.name)
                 }.build())
             }
-            returns(interfaceTypeName)
-            addStatement(
-                "return %N(${tupleComponents.joinToString { "%N" }})",
-                implTypeSpec,
-                *tupleComponents.map { it.name }.toTypedArray()
-            )
+            returns(t)
+            addCode(CodeBlock.builder().apply {
+                val constructableClassName = ClassName(
+                    coreInternalPackage,
+                    "_Constructable${tupleComponents.size}"
+                )
+                val constructableTypeName = constructableClassName.parameterizedBy(tupleComponents.map { it.typeName } + t)
+                val erasedConstructableTypeName = constructableClassName.parameterizedBy(tupleComponents.map { STAR } + STAR )
+
+
+                beginControlFlow("if (this·is·%T)", erasedConstructableTypeName)
+                addStatement(
+                    "return (this·as·%T).construct(${tupleComponents.joinToString { "%N" }})",
+                    constructableTypeName,
+                    *tupleComponents.map { it.name }.toTypedArray()
+                )
+                nextControlFlow("else")
+                addStatement(
+                    "throw %T(%S)",
+                    PreconditionFailure::class.asClassName(),
+                    "Cannot set on instance of $interfaceName created outside Kazuki"
+                )
+                endControlFlow()
+            }.build())
         }.build()
     )
 
@@ -421,4 +441,4 @@ internal fun TypeSpec.Builder.addRecordType(
 private const val otherParameterName = "other"
 private const val isRelatedFunctionName = "isRelated"
 private const val enforceInvariantParameterName = "enforceInvariant"
-
+private const val constructFunctionName = "construct"
