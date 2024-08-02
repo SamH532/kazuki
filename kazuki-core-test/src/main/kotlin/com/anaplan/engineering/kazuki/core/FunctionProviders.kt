@@ -5,6 +5,7 @@ import com.anaplan.engineering.kazuki.core.C_Module.set
 import com.anaplan.engineering.kazuki.core.E_Module.as_E
 import com.anaplan.engineering.kazuki.core.E_Module.is_E
 import com.anaplan.engineering.kazuki.core.E_Module.set
+import com.anaplan.engineering.kazuki.core.GA_Module.set
 
 
 @Module
@@ -82,5 +83,37 @@ open class EFunctions(val e: E) : CFunctions(e) {
 
 }
 
+
+@Module
+interface GA<P> {
+    val map: Mapping<P, Int>
+
+    @FunctionProvider(GAFunctions::class)
+    val functions: GAFunctions<P>
+}
+
+open class GAFunctions<P>(val ga: GA<P>) {
+    open val increment = function(
+        command = { p: P -> ga.set(map = ga.map * mk_(p, ga.map[p] + 1)) },
+        pre = { p -> p in ga.map.dom },
+        post = { p, result -> result.map[p] == ga.map[p] + 1 }
+    )
+}
+
+@Module
+interface GB1<P> : GA<P> {
+
+    @Invariant
+    fun lessThan5() = forall(map.rng) { it < 5 }
+
+}
+
+@Module
+interface GB2 : GA<String> {
+
+    @Invariant
+    fun lessThan5() = forall(map.rng) { it < 5 }
+
+}
 
 // TODO -- generic pattern

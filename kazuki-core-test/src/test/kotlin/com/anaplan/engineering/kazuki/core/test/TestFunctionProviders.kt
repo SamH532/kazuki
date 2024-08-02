@@ -5,6 +5,11 @@ import com.anaplan.engineering.kazuki.core.B_Module.mk_B
 import com.anaplan.engineering.kazuki.core.C_Module.mk_C
 import com.anaplan.engineering.kazuki.core.D_Module.mk_D
 import com.anaplan.engineering.kazuki.core.E_Module.mk_E
+import com.anaplan.engineering.kazuki.core.GA_Module.mk_GA
+import com.anaplan.engineering.kazuki.core.GB1_Module.mk_GB1
+import com.anaplan.engineering.kazuki.core.GB2_Module.mk_GB2
+import com.anaplan.engineering.kazuki.core.mk_
+import com.anaplan.engineering.kazuki.core.mk_Mapping
 import org.junit.Test
 import kotlin.test.assertEquals
 
@@ -12,9 +17,13 @@ class TestFunctionProviders {
 
     // TODO -- TupleTestGeneratorTask to generate tests for construction
 
+    private val p = "P"
+
     @Test
     fun directDcl() {
         assertEquals(mk_A(4), mk_A(3).functions.increment())
+
+        assertEquals(mk_GA(mk_Mapping(mk_(p, 2))), mk_GA(mk_Mapping(mk_(p, 1))).functions.increment(p))
     }
 
     @Test
@@ -23,6 +32,18 @@ class TestFunctionProviders {
 
         causesInvariantFailure {
             mk_B(4).functions.increment()
+        }
+
+        assertEquals(mk_GB1(mk_Mapping(mk_(p, 2))), mk_GB1(mk_Mapping(mk_(p, 1))).functions.increment(p))
+
+        causesInvariantFailure {
+            mk_GB1(mk_Mapping(mk_(p, 4))).functions.increment(p)
+        }
+
+        assertEquals(mk_GB2(mk_Mapping(mk_(p, 2))), mk_GB2(mk_Mapping(mk_(p, 1))).functions.increment(p))
+
+        causesInvariantFailure {
+            mk_GB2(mk_Mapping(mk_(p, 4))).functions.increment(p)
         }
     }
 

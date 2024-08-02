@@ -387,8 +387,8 @@ internal fun TypeSpec.Builder.addRecordType(
 
     addFunction(
         FunSpec.builder("set").apply {
-            val t = TypeVariableName("T", bounds = listOf(interfaceTypeName))
-            addTypeVariable(t)
+            val t = TypeVariableName(getUnusedGenericName(interfaceTypeArguments), bounds = listOf(interfaceTypeName))
+            addTypeVariables(interfaceTypeArguments + t)
             receiver(t)
             tupleComponents.forEach { tc ->
                 addParameter(ParameterSpec.builder(tc.name, tc.typeName).apply {
@@ -401,8 +401,10 @@ internal fun TypeSpec.Builder.addRecordType(
                     coreInternalPackage,
                     "_Constructable${tupleComponents.size}"
                 )
-                val constructableTypeName = constructableClassName.parameterizedBy(tupleComponents.map { it.typeName } + t)
-                val erasedConstructableTypeName = constructableClassName.parameterizedBy(tupleComponents.map { STAR } + STAR )
+                val constructableTypeName =
+                    constructableClassName.parameterizedBy(tupleComponents.map { it.typeName } + t)
+                val erasedConstructableTypeName =
+                    constructableClassName.parameterizedBy(tupleComponents.map { STAR } + STAR)
 
 
                 beginControlFlow("if (this·is·%T)", erasedConstructableTypeName)

@@ -10,6 +10,7 @@ import com.google.devtools.ksp.symbol.KSTypeArgument
 import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeVariableName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
@@ -93,3 +94,8 @@ fun KSClassDeclaration.resolveTypeNameOfAncestorGenericParameter(
         ?: throw IllegalStateException("Unable to identify parameter $paramIndex of ancestor $ancestorKClass")
 }
 
+internal fun getUnusedGenericName(usedTypeVariableNames: List<TypeVariableName>) : String {
+    val candidates = ('A'..'Z').map { "_$it" }
+    val usedNames = usedTypeVariableNames.map { it.name }.toSet()
+    return (candidates - usedNames).first()
+}
