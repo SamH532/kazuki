@@ -325,6 +325,7 @@ internal fun TypeSpec.Builder.addRecordType(
         }.build()
     )
 
+    // TODO -- optimization -- if already this type just return it
     addFunction(
         FunSpec.builder("as_$interfaceName").apply {
             if (interfaceTypeArguments.isNotEmpty()) {

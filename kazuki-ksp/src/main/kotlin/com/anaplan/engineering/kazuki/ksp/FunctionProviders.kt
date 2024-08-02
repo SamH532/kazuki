@@ -28,18 +28,24 @@ internal fun getFunctionProviderProperties(
     val localFunctionProviderProperties = properties.filter { it.isAnnotationPresent(FunctionProvider::class) }.map {
         FunctionProviderProperty(it, it.type.toTypeName(localTypeParameterResolver))
     }
-    val nonOverriddenSuperFunctionProviderProperties = classDcl.superModules.flatMap { type ->
+    val superFunctionProviderProperties = classDcl.superModules.flatMap { type ->
         val superClassDcl = type.resolve().declaration as KSClassDeclaration
         val superTypeParameterResolver = superClassDcl.typeParameters.toTypeParameterResolver()
         val superProperties = superClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
         val superFunctionProviderProperties = superProperties.filter { it.isAnnotationPresent(FunctionProvider::class) }
-        superFunctionProviderProperties.filter { s ->
-            localFunctionProviderProperties.none { l -> s.simpleName.asString() == l.name }
-        }.map {
+        superFunctionProviderProperties.map {
             FunctionProviderProperty(it, it.type.toTypeName(superTypeParameterResolver))
         }
     }
-    return (localFunctionProviderProperties + nonOverriddenSuperFunctionProviderProperties).toList()
+    val resolvedFunctionProviderProperties = (localFunctionProviderProperties + superFunctionProviderProperties).groupBy { it.name }.map { (_, properties) ->
+        if (properties.size == 1) {
+            properties.single()
+        } else {
+            val overridden = properties.mapNotNull { it.property.findOverridee() }
+            properties.single { it.property !in overridden }
+        }
+    }
+    return resolvedFunctionProviderProperties.toList()
 }
 
 
