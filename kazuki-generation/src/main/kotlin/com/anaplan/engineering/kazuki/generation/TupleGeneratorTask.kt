@@ -9,11 +9,6 @@ import org.gradle.api.tasks.TaskAction
 import java.io.File
 import kotlin.reflect.KClass
 
-
-// add internal tuple interface and add comparable
-// have records use internal tuple interface
-// split into 2 files ..
-
 @CacheableTask
 abstract class TupleGeneratorTask : DefaultTask() {
 
@@ -40,6 +35,7 @@ abstract class TupleGeneratorTask : DefaultTask() {
             .addFileComment("This file is generated -- do not edit!")
             .apply {
                 (1..MaxNary).forEach {
+                    addNaryConstructableInternal(it)
                     addNAryTupleInternal(it)
                 }
             }
@@ -53,6 +49,13 @@ private const val FileName = "Tuples"
 private fun publicInterfaceName(nary: Int) = "Tuple$nary"
 private fun internalInterfaceName(nary: Int) = "_${publicInterfaceName(nary)}"
 private fun internalDataClassName(nary: Int) = "_${internalInterfaceName(nary)}"
+private fun constructableInterfaceName(nary: Int) = "_Constructable$nary"
+
+private const val constructFunctionName = "construct"
+
+// No obvious way to share with core
+private const val comparableWithPropertyName = "comparableWith"
+private val comparableWithTypeName = KClass::class.asTypeName().parameterizedBy(STAR)
 
 fun FileSpec.Builder.addNAryTuple(nary: Int) {
     val interfaceName = publicInterfaceName(nary)
@@ -63,7 +66,11 @@ fun FileSpec.Builder.addNAryTuple(nary: Int) {
         addTypeVariables(typeNames)
         (1..nary).forEach {
             addProperty(PropertySpec.builder("_$it", TypeVariableName("T$it")).build())
-            addFunction(FunSpec.builder("component$it").addModifiers(KModifier.OPERATOR).addStatement("return _$it").returns(TypeVariableName("T$it")).build())        }
+            addFunction(
+                FunSpec.builder("component$it").addModifiers(KModifier.OPERATOR).addStatement("return _$it")
+                    .returns(TypeVariableName("T$it")).build()
+            )
+        }
     }.build())
 
     addFunction(FunSpec.builder("mk_").apply {
@@ -76,9 +83,6 @@ fun FileSpec.Builder.addNAryTuple(nary: Int) {
     }.build())
 }
 
-// No obvious way to share with core
-private const val comparableWithPropertyName = "comparableWith"
-private val comparableWithTypeName = KClass::class.asTypeName().parameterizedBy(STAR)
 
 fun FileSpec.Builder.addNAryTupleInternal(nary: Int) {
     val internalInterfaceName = internalInterfaceName(nary)
@@ -93,8 +97,16 @@ fun FileSpec.Builder.addNAryTupleInternal(nary: Int) {
     val publicInterfaceName = publicInterfaceName(nary)
     val publicInterfaceClassName = ClassName(PackageName, publicInterfaceName)
     addType(TypeSpec.interfaceBuilder(internalInterfaceName).apply {
-        addTypeVariables(typeNames)
+        addTypeVariables(typeNames + TypeVariableName("T"))
         addSuperinterface(publicInterfaceClassName.parameterizedBy(typeNames))
+        (1..nary).forEach { conNary ->
+            val constructableTypeArgs = (1..conNary).map { TypeVariableName("T$it") } + TypeVariableName("T")
+            addSuperinterface(
+                ClassName(InternalPackageName, constructableInterfaceName(conNary)).parameterizedBy(
+                    constructableTypeArgs
+                )
+            )
+        }
         addProperty(
             PropertySpec.builder(comparableWithPropertyName, comparableWithTypeName, KModifier.OPEN).build()
         )
@@ -103,13 +115,28 @@ fun FileSpec.Builder.addNAryTupleInternal(nary: Int) {
     addType(TypeSpec.classBuilder(className).apply {
         addModifiers(KModifier.DATA, KModifier.INTERNAL)
         addTypeVariables(typeNames)
-        addSuperinterface(ClassName(InternalPackageName, internalInterfaceName).parameterizedBy(typeNames))
+        addSuperinterface(
+            ClassName(
+                InternalPackageName,
+                internalInterfaceName
+            ).parameterizedBy(typeNames + publicInterfaceClassName.parameterizedBy(typeNames))
+        )
         primaryConstructor(constructor)
         (1..nary).forEach {
             addProperty(
                 PropertySpec.builder("_$it", TypeVariableName("T$it")).addModifiers(KModifier.OVERRIDE)
                     .initializer("_$it").build()
             )
+        }
+        (1..nary).forEach { conNary ->
+            addFunction(FunSpec.builder(constructFunctionName).apply {
+                addModifiers(KModifier.OVERRIDE)
+                (1..conNary).forEach { addParameter("t$it", TypeVariableName("T$it")) }
+                val constructedType = ClassName(InternalPackageName, className).parameterizedBy(typeNames)
+                returns(constructedType)
+                val params = (1..conNary).map { "t$it" } + (conNary + 1 .. nary).map { "_$it" }
+                addStatement("return %T(${params.joinToString(",")})", constructedType)
+            }.build())
         }
         addProperty(
             PropertySpec.builder(comparableWithPropertyName, comparableWithTypeName, KModifier.OPEN, KModifier.OVERRIDE)
@@ -118,4 +145,18 @@ fun FileSpec.Builder.addNAryTupleInternal(nary: Int) {
         // TODO -- toString
     }.build())
 
+}
+
+fun FileSpec.Builder.addNaryConstructableInternal(nary: Int) {
+    val constructableInterfaceName = constructableInterfaceName(nary)
+    val typeNames = (1..nary).map { TypeVariableName("T$it") } + TypeVariableName("T")
+
+    addType(TypeSpec.interfaceBuilder(constructableInterfaceName).apply {
+        addTypeVariables(typeNames)
+        addFunction(FunSpec.builder(constructFunctionName).apply {
+            addModifiers(KModifier.ABSTRACT)
+            (1..nary).forEach { addParameter("t$it", TypeVariableName("T$it")) }
+            returns(TypeVariableName("T"))
+        }.build())
+    }.build())
 }

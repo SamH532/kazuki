@@ -489,4 +489,6 @@ class TestComparisons {
         assertNotEquals(i3, i5)
         assertNotEquals(i4, i5)
     }
+
+    // TODO - set and mapping tests
 }
