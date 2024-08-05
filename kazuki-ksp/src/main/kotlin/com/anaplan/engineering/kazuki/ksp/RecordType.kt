@@ -387,7 +387,7 @@ internal fun TypeSpec.Builder.addRecordType(
 
     addFunction(
         FunSpec.builder("set").apply {
-            val t = TypeVariableName(getUnusedGenericName(interfaceTypeArguments), bounds = listOf(interfaceTypeName))
+            val t = TypeVariableName(findUnusedGenericName(interfaceTypeArguments), bounds = listOf(interfaceTypeName))
             addTypeVariables(interfaceTypeArguments + t)
             receiver(t)
             tupleComponents.forEach { tc ->

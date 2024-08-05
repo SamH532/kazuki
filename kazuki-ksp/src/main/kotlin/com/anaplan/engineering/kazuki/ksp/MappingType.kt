@@ -11,7 +11,6 @@ import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 
 internal fun TypeSpec.Builder.addMappingType(
@@ -48,8 +47,6 @@ private fun TypeSpec.Builder.addMappingType(
     } else {
         interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments)
     }
-    val interfaceTypeParameterResolver = interfaceClassDcl.typeParameters.toTypeParameterResolver()
-
     val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
     val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, processingState)
     if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }.firstOrNull() != null) {
@@ -65,8 +62,9 @@ private fun TypeSpec.Builder.addMappingType(
     val mappingType =
         interfaceClassDcl.superTypes.single { it.resolve().declaration.qualifiedName?.asString() == superInterface.qualifiedName }
             .resolve()
-    val domainTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface, 0)
-    val rangeTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface, 1)
+    val ancestorTypeParameters = interfaceClassDcl.resolveAncestorTypeParameterNames(superInterface.qualifiedName!!)
+    val domainTypeName = ancestorTypeParameters.getTypeName(0)
+    val rangeTypeName = ancestorTypeParameters.getTypeName(1)
     val baseMapPropertyName = "baseMap"
     val baseSetPropertyName = "baseSet"
     val enforceInvariantParameterName = "enforceInvariant"

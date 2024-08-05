@@ -7,7 +7,10 @@ import com.google.devtools.ksp.getAnnotationsByType
 import com.google.devtools.ksp.isAnnotationPresent
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
+import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 
@@ -22,7 +25,7 @@ internal fun getFunctionProviderProperties(
     classDcl: KSClassDeclaration,
     processingState: KazukiSymbolProcessor.ProcessingState,
 ): Collection<FunctionProviderProperty> {
-    processingState.logger.debug("Getting function providers", classDcl)
+    processingState.logger.debug("Getting function providers for $classDcl", classDcl)
     val properties = classDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
     val localTypeParameterResolver = classDcl.typeParameters.toTypeParameterResolver()
     val localFunctionProviderProperties = properties.filter { it.isAnnotationPresent(FunctionProvider::class) }.map {
@@ -33,8 +36,29 @@ internal fun getFunctionProviderProperties(
         val superTypeParameterResolver = superClassDcl.typeParameters.toTypeParameterResolver()
         val superProperties = superClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
         val superFunctionProviderProperties = superProperties.filter { it.isAnnotationPresent(FunctionProvider::class) }
+
+        val ancestorTypeParameters = classDcl.resolveAncestorTypeParameterNames(superClassDcl.qualifiedName!!.asString())
+        processingState.logger.debug("Type parameters: $ancestorTypeParameters")
         superFunctionProviderProperties.map {
-            FunctionProviderProperty(it, it.type.toTypeName(superTypeParameterResolver))
+            // TODO -- there are likely more complex instances here and we could do with a generic utility to resolve more generally
+            val providerType = it.type.resolve()
+            val providerClassName = providerType.toClassName()
+            val resolvedProviderTypeArgs = providerType.arguments.map { typeArg ->
+                val typeArgType = typeArg.type!!.resolve().declaration
+                if (typeArgType is KSTypeParameter) {
+                    val resolvedTypeName = ancestorTypeParameters.getTypeName(typeArgType)
+                    processingState.logger.debug("Mapped $typeArgType -> $resolvedTypeName")
+                    resolvedTypeName
+                } else {
+                    typeArg.toTypeName(superTypeParameterResolver)
+                }
+            }
+            val providerTypeName = if (resolvedProviderTypeArgs.isEmpty()) {
+                providerClassName
+            } else {
+                providerClassName.parameterizedBy(*resolvedProviderTypeArgs.toTypedArray())
+            }
+            FunctionProviderProperty(it, providerTypeName)
         }
     }
     val resolvedFunctionProviderProperties = (localFunctionProviderProperties + superFunctionProviderProperties).groupBy { it.name }.map { (_, properties) ->

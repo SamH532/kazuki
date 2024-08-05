@@ -35,8 +35,6 @@ private fun TypeSpec.Builder.addSequenceType(
     } else {
         interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments)
     }
-    val interfaceTypeParameterResolver = interfaceClassDcl.typeParameters.toTypeParameterResolver()
-
     val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
     val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, processingState)
     if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }.firstOrNull() != null) {
@@ -45,7 +43,7 @@ private fun TypeSpec.Builder.addSequenceType(
     }
 
     val superInterface = if (requiresNonEmpty) Sequence1::class else Sequence::class
-    val elementTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface, 0)
+    val elementTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface.qualifiedName!!, 0)
     val elementsPropertyName = "elements"
     val enforceInvariantParameterName = "enforceInvariant"
 

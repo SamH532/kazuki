@@ -9,7 +9,6 @@ import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 
 internal fun TypeSpec.Builder.addSetType(
@@ -35,8 +34,6 @@ private fun TypeSpec.Builder.addSetType(
     } else {
         interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments)
     }
-    val interfaceTypeParameterResolver = interfaceClassDcl.typeParameters.toTypeParameterResolver()
-
     val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
     val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, processingState)
     if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }.firstOrNull() != null) {
@@ -45,7 +42,7 @@ private fun TypeSpec.Builder.addSetType(
     }
 
     val superInterface = if (requiresNonEmpty) Set1::class else Set::class
-    val elementTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface, 0)
+    val elementTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface.qualifiedName!!, 0)
     val elementsPropertyName = "elements"
     val enforceInvariantParameterName = "enforceInvariant"
     val superSetTypeName = Set::class.asClassName().parameterizedBy(elementTypeName)

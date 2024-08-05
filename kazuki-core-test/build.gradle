@@ -8,3 +8,6 @@ dependencies {
     ksp project(":kazuki-ksp")
 }
 
+ksp {
+    arg("com.anaplan.engineering.kazuki.compile.debug.level", "INFO")
+}

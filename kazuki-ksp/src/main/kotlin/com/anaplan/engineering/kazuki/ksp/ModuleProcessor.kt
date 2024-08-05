@@ -52,6 +52,7 @@ internal class ModuleProcessor(
     }
 
     private fun processModuleClass(clazz: KSClassDeclaration) {
+        processingState.logger.debug("Processing module: ${clazz.qualifiedName}")
         val moduleClassName = "${clazz.simpleName.asString()}_Module"
         val moduleTypeSpec = TypeSpec.objectBuilder(moduleClassName).apply {
             when (clazz.kazukiType()) {
@@ -68,28 +69,19 @@ internal class ModuleProcessor(
             }
         }.build()
 
-        writeModule(clazz, moduleClassName, "", moduleTypeSpec)
+        writeModule(clazz, moduleClassName, moduleTypeSpec)
     }
 
     private fun processModuleObject(clazz: KSClassDeclaration) {
         // TODO - type extension
         val types =
-            clazz.declarations.filterIsInstance<KSClassDeclaration>().filter { it.getVisibility() == Visibility.PUBLIC }.groupBy { it.kazukiType() }
+            clazz.declarations.filterIsInstance<KSClassDeclaration>().filter { it.getVisibility() == Visibility.PUBLIC }
+                .groupBy { it.kazukiType() }
 
         val seq1Types = types[KazukiType.Sequence1Type] ?: emptyList()
         val seqTypes = types[KazukiType.SequenceType] ?: emptyList()
         val quoteTypes = types[KazukiType.QuoteType] ?: emptyList()
         val recordTypes = types[KazukiType.RecordType] ?: emptyList()
-
-        val debug = """
-           Debugging: 
-           
-           seqTypes = ${seqTypes.joinToString(",") { it.simpleName.asString() }}
-           seq1Types = ${seq1Types.joinToString(",") { it.simpleName.asString() }}
-           quoteTypes = ${quoteTypes.joinToString(",") { it.simpleName.asString() }}
-           recordTypes = ${recordTypes.joinToString(",") { it.simpleName.asString() }}
-           primInvs = ${processingState.primitiveInvariants}
-        """
 
         val moduleClassName = "${clazz.simpleName.asString()}_Module"
         val moduleTypeSpec = TypeSpec.objectBuilder(moduleClassName).apply {
@@ -99,20 +91,22 @@ internal class ModuleProcessor(
             recordTypes.forEach { addRecordType(it, processingState) }
         }.build()
 
-        writeModule(clazz, moduleClassName, debug, moduleTypeSpec)
+        writeModule(clazz, moduleClassName, moduleTypeSpec)
     }
 
     private fun writeModule(
         clazz: KSClassDeclaration,
         moduleClassName: String,
-        debug: String,
         moduleTypeSpec: TypeSpec
     ) {
         val clazzName =
             ClassName(packageName = clazz.packageName.asString(), clazz.simpleName.asString())
-        val imports = clazz.declarations.filterIsInstance<KSClassDeclaration>().filter { it.getVisibility() == Visibility.PUBLIC }.map { it.simpleName.asString() }.toList()
-        FileSpec.builder(clazz.packageName.asString(), moduleClassName).addImport(clazzName, imports)
-            .addFileComment(debug).addType(moduleTypeSpec).build()
+        val imports =
+            clazz.declarations.filterIsInstance<KSClassDeclaration>().filter { it.getVisibility() == Visibility.PUBLIC }
+                .map { it.simpleName.asString() }.toList()
+        FileSpec.builder(clazz.packageName.asString(), moduleClassName)
+            .addImport(clazzName, imports)
+            .addType(moduleTypeSpec).build()
             .writeTo(codeGenerator, Dependencies(true, clazz.containingFile!!))
     }
 }

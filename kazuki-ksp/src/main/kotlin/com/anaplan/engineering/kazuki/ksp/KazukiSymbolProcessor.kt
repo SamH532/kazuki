@@ -39,14 +39,36 @@ class KazukiSymbolProcessor(private val environment: SymbolProcessorEnvironment)
         return allModules[false] ?: emptyList()
     }
 
-    class KazukiLogger(private val logger: KSPLogger): KSPLogger by logger {
-        fun debug(message: String, symbol: KSNode? = null) = logging(message, symbol)
+    class KazukiLogger(private val environment: SymbolProcessorEnvironment): KSPLogger by environment.logger {
+
+        enum class Level {
+            DEBUG, INFO, WARN, ERROR
+        }
+
+        companion object {
+            const val DebugLevelPropertyName = "com.anaplan.engineering.kazuki.compile.debug.level"
+        }
+        // Enables redirection of Kazuki debug logging so that we can view this info without enabling compiler debug
+        // logging more widely
+        private val debugRedirect by lazy {
+            val property = environment.options[DebugLevelPropertyName] ?: Level.DEBUG.name
+            val level = Level.valueOf(property.uppercase())
+            environment.logger.info("Kazuki debug level logging will be redirected to $level")
+            when (level) {
+                Level.DEBUG -> { m: String, s: KSNode? -> logging(m, s) }
+                Level.INFO -> { m: String, s: KSNode? -> info(m, s) }
+                Level.WARN -> { m: String, s: KSNode? -> warn(m, s) }
+                Level.ERROR -> { m: String, s: KSNode? -> error(m, s) }
+            }
+        }
+
+        fun debug(message: String, symbol: KSNode? = null) = debugRedirect(message, symbol)
     }
 
     class ProcessingState(environment: SymbolProcessorEnvironment) {
         val primitiveInvariants: MutableMap<String, KSFunctionDeclaration> = mutableMapOf()
         val errors: MutableList<String> = mutableListOf()
-        val logger = KazukiLogger(environment.logger)
+        val logger = KazukiLogger(environment)
 
         fun hasErrors() = errors.isNotEmpty()
     }
