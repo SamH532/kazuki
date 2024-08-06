@@ -36,7 +36,8 @@ private fun TypeSpec.Builder.addSetType(
     }
     val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
     val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, processingState)
-    if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }.firstOrNull() != null) {
+    if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }
+            .firstOrNull() != null) {
         val propertyNames = properties.map { it.simpleName.asString() }.toList()
         processingState.errors.add("Set type $interfaceTypeName may not have properties: $propertyNames")
     }
@@ -44,7 +45,6 @@ private fun TypeSpec.Builder.addSetType(
     val superInterface = if (requiresNonEmpty) Set1::class else Set::class
     val elementTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface.qualifiedName!!, 0)
     val elementsPropertyName = "elements"
-    val enforceInvariantParameterName = "enforceInvariant"
     val superSetTypeName = Set::class.asClassName().parameterizedBy(elementTypeName)
     val suffix = if (requiresNonEmpty) "Set1" else "Set"
     val implClassName = "${interfaceName}_$suffix"
@@ -57,11 +57,14 @@ private fun TypeSpec.Builder.addSetType(
         addSuperinterface(_KSet::class.asClassName().parameterizedBy(elementTypeName, interfaceTypeName))
         addSuperinterface(superSetTypeName, CodeBlock.of(elementsPropertyName))
         addSuperclassConstructorParameter(elementsPropertyName)
-        primaryConstructor(FunSpec.constructorBuilder()
-            .addParameter(elementsPropertyName, superSetTypeName)
-            .addParameter(ParameterSpec.builder(enforceInvariantParameterName, Boolean::class).defaultValue("true")
-                .build())
-            .build()
+        primaryConstructor(
+            FunSpec.constructorBuilder()
+                .addParameter(elementsPropertyName, superSetTypeName)
+                .addParameter(
+                    ParameterSpec.builder(enforceInvariantParameterName, Boolean::class).defaultValue("true")
+                        .build()
+                )
+                .build()
         )
         addProperty(
             PropertySpec.builder(elementsPropertyName, superSetTypeName, KModifier.OPEN, KModifier.OVERRIDE)
@@ -71,12 +74,16 @@ private fun TypeSpec.Builder.addSetType(
         addFunctionProviders(functionProviderProperties, processingState)
 
         // N.B. it is important to have properties before init block
-        val additionalInvariantParts = if (requiresNonEmpty) listOf("atLeastOneElement()") else emptyList()
-        addInvariantFrom(interfaceClassDcl,
-            false,
-            enforceInvariantParameterName,
+        val additionalInvariantParts = if (requiresNonEmpty) {
+            listOf(FreeformInvariant("atLeastOneElement", "::atLeastOneElement"))
+        } else {
+            emptyList()
+        }
+        addInvariantFrom(
+            interfaceClassDcl,
             processingState,
-            additionalInvariantParts)
+            additionalInvariantParts
+        )
 
         addFunction(
             FunSpec.builder("construct").apply {
@@ -86,10 +93,12 @@ private fun TypeSpec.Builder.addSetType(
                 addStatement("return %N(%N)", implClassName, elementsPropertyName)
             }.build()
         )
-        addFunction(FunSpec.builder("toString").addModifiers(KModifier.OVERRIDE)
-            .returns(String::class)
-            .addStatement("return \"%N\$%N\"", interfaceName, elementsPropertyName)
-            .build())
+        addFunction(
+            FunSpec.builder("toString").addModifiers(KModifier.OVERRIDE)
+                .returns(String::class)
+                .addStatement("return \"%N\$%N\"", interfaceName, elementsPropertyName)
+                .build()
+        )
         addFunction(
             FunSpec.builder("hashCode").addModifiers(KModifier.OVERRIDE)
                 .returns(Int::class).apply {
@@ -102,46 +111,50 @@ private fun TypeSpec.Builder.addSetType(
                 }.build()
         )
         val equalsParameterName = "other"
-        addFunction(FunSpec.builder("equals").addModifiers(KModifier.OVERRIDE)
-            .addParameter(ParameterSpec.builder(equalsParameterName, Any::class.asTypeName().copy(nullable = true))
-                .build())
-            .returns(Boolean::class).addCode(CodeBlock.builder().apply {
-                beginControlFlow("if (this === %N)", equalsParameterName)
-                addStatement("return true")
-                endControlFlow()
-
-                beginControlFlow(
-                    "if (%N !is %T)",
-                    equalsParameterName,
-                    _KSet::class.asClassName().parameterizedBy(STAR, STAR)
+        addFunction(
+            FunSpec.builder("equals").addModifiers(KModifier.OVERRIDE)
+                .addParameter(
+                    ParameterSpec.builder(equalsParameterName, Any::class.asTypeName().copy(nullable = true))
+                        .build()
                 )
-                addStatement("return false")
-                endControlFlow()
+                .returns(Boolean::class).addCode(CodeBlock.builder().apply {
+                    beginControlFlow("if (this === %N)", equalsParameterName)
+                    addStatement("return true")
+                    endControlFlow()
 
-                beginControlFlow(
-                    "if (!(%N.%N.isInstance(this) && this.%N.isInstance(%N)))",
-                    equalsParameterName,
-                    comparableWithPropertyName,
-                    comparableWithPropertyName,
-                    equalsParameterName
-                )
-                addStatement("return false")
-                endControlFlow()
-
-                if (comparableWith.property == null) {
-                    addStatement("return %N == %N", elementsPropertyName, equalsParameterName)
-                } else {
-                    val comparablePropertyName = comparableWith.property.simpleName.getShortName()
-                    addStatement(
-                        "return this.%N == (%N as %T).%N",
-                        comparablePropertyName,
+                    beginControlFlow(
+                        "if (%N !is %T)",
                         equalsParameterName,
-                        comparableWith.className,
-                        comparablePropertyName
+                        _KSet::class.asClassName().parameterizedBy(STAR, STAR)
                     )
-                }
+                    addStatement("return false")
+                    endControlFlow()
 
-            }.build()).build())
+                    beginControlFlow(
+                        "if (!(%N.%N.isInstance(this) && this.%N.isInstance(%N)))",
+                        equalsParameterName,
+                        comparableWithPropertyName,
+                        comparableWithPropertyName,
+                        equalsParameterName
+                    )
+                    addStatement("return false")
+                    endControlFlow()
+
+                    if (comparableWith.property == null) {
+                        addStatement("return %N == %N", elementsPropertyName, equalsParameterName)
+                    } else {
+                        val comparablePropertyName = comparableWith.property.simpleName.getShortName()
+                        addStatement(
+                            "return this.%N == (%N as %T).%N",
+                            comparablePropertyName,
+                            equalsParameterName,
+                            comparableWith.className,
+                            comparablePropertyName
+                        )
+                    }
+
+                }.build()).build()
+        )
     }.build()
     addType(implTypeSpec)
 
@@ -177,7 +190,12 @@ private fun TypeSpec.Builder.addSetType(
             }
             addParameter(elementsPropertyName, superSetTypeName)
             returns(Boolean::class)
-            addStatement("return %N$implTypeArgs(%N, false).%N()", implClassName, elementsPropertyName, validityFunctionName)
+            addStatement(
+                "return %N$implTypeArgs(%N, false).%N()",
+                implClassName,
+                elementsPropertyName,
+                validityFunctionName
+            )
         }.build()
     )
     addFunction(

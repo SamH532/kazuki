@@ -164,7 +164,7 @@ internal fun TypeSpec.Builder.addRecordType(
         val comparableWith = addComparableWith(interfaceClassDcl, tupleClassName, processingState)
 
         // N.B. it·is·important to have properties before init block
-        addInvariantFrom(interfaceClassDcl, false, enforceInvariantParameterName, processingState)
+        addInvariantFrom(interfaceClassDcl, processingState)
 
         addFunction(
             FunSpec.builder("toString").addModifiers(KModifier.OVERRIDE)
@@ -443,5 +443,4 @@ internal fun TypeSpec.Builder.addRecordType(
 
 private const val otherParameterName = "other"
 private const val isRelatedFunctionName = "isRelated"
-private const val enforceInvariantParameterName = "enforceInvariant"
 private const val constructFunctionName = "construct"

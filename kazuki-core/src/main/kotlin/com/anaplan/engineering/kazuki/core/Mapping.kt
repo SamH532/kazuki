@@ -43,6 +43,26 @@ fun <D, R> mk_Mapping(vararg maplets: Tuple2<D, R>): Mapping<D, R> =
         maplets.forEach { put(it._1, it._2) }
     })
 
+fun <D, R> as_InjectiveMapping(maplets: Iterable<Tuple2<D, R>>): InjectiveMapping<D, R> =
+    __KInjectiveMapping(LinkedHashMap<D, R>().apply {
+        maplets.forEach { put(it._1, it._2) }
+    })
+
+fun <D, R> as_InjectiveMapping1(maplets: Iterable<Tuple2<D, R>>): InjectiveMapping1<D, R> =
+    __KInjectiveMapping1(LinkedHashMap<D, R>().apply {
+        maplets.forEach { put(it._1, it._2) }
+    })
+
+fun <D, R> as_InjectiveMapping(maplets: Array<Tuple2<D, R>>): InjectiveMapping<D, R> =
+    __KInjectiveMapping(LinkedHashMap<D, R>().apply {
+        maplets.forEach { put(it._1, it._2) }
+    })
+
+fun <D, R> as_InjectiveMapping1(maplets: Array<Tuple2<D, R>>): InjectiveMapping1<D, R> =
+    __KInjectiveMapping1(LinkedHashMap<D, R>().apply {
+        maplets.forEach { put(it._1, it._2) }
+    })
+
 fun <D, R> mk_InjectiveMapping(vararg maplets: Tuple2<D, R>): InjectiveMapping<D, R> =
     __KInjectiveMapping(LinkedHashMap<D, R>().apply {
         maplets.forEach { put(it._1, it._2) }

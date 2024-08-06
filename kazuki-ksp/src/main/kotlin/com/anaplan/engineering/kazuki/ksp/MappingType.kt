@@ -67,7 +67,6 @@ private fun TypeSpec.Builder.addMappingType(
     val rangeTypeName = ancestorTypeParameters.getTypeName(1)
     val baseMapPropertyName = "baseMap"
     val baseSetPropertyName = "baseSet"
-    val enforceInvariantParameterName = "enforceInvariant"
     val superMappingTypeName = mappingType.toClassName().parameterizedBy(domainTypeName, rangeTypeName)
     val suffix = if (requiresNonEmpty) "Mapping1" else "Mapping"
     val implClassName = "${interfaceName}_$suffix"
@@ -146,12 +145,14 @@ private fun TypeSpec.Builder.addMappingType(
         addFunctionProviders(functionProviderProperties, processingState)
 
         // N.B. it is important to have properties before init block
-        val additionalInvariantParts = if (requiresNonEmpty) listOf("card > 0") else emptyList()
+        val additionalInvariantParts = if (requiresNonEmpty) {
+            listOf(FreeformInvariant("nonEmpty","{ card > 0 }"))
+        } else {
+            emptyList()
+        }
         // TODO -- should we get this from super interface -- Sequence1.atLeastOneElement()
         addInvariantFrom(
             interfaceClassDcl,
-            false,
-            enforceInvariantParameterName,
             processingState,
             additionalInvariantParts
         )

@@ -9,7 +9,6 @@ import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 
 internal fun TypeSpec.Builder.addSeqType(
@@ -45,7 +44,6 @@ private fun TypeSpec.Builder.addSequenceType(
     val superInterface = if (requiresNonEmpty) Sequence1::class else Sequence::class
     val elementTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface.qualifiedName!!, 0)
     val elementsPropertyName = "elements"
-    val enforceInvariantParameterName = "enforceInvariant"
 
     val superListTypeName = List::class.asClassName().parameterizedBy(elementTypeName)
     val suffix = if (requiresNonEmpty) "Seq1" else "Seq"
@@ -104,11 +102,13 @@ private fun TypeSpec.Builder.addSequenceType(
 
         // N.B. it is important to have properties before init block
         // TODO -- should we get this from super interface -- Sequence1.atLeastOneElement()
-        val additionalInvariantParts = if (requiresNonEmpty) listOf("len > 0") else emptyList()
+        val additionalInvariantParts = if (requiresNonEmpty) {
+            listOf(FreeformInvariant("atLeastOneElement", "::atLeastOneElement"))
+        } else {
+            emptyList()
+        }
         addInvariantFrom(
             interfaceClassDcl,
-            false,
-            enforceInvariantParameterName,
             processingState,
             additionalInvariantParts
         )
