@@ -60,6 +60,20 @@ fun <T, S : Sequence<T>> S.insert(t: T, i: nat1) =
         transformSequence { it.elements.toMutableList().apply { add(i - 1, t) } }
     }
 
+fun <T, S : Sequence<T>> S.insert(s: S, i: nat1) =
+    if (i < 1 || i > len + 1) {
+        throw PreconditionFailure("Index $i is out of bounds")
+    } else {
+        transformSequence { it.elements.toMutableList().apply { addAll(i - 1, s) } }
+    }
+
+fun <T> Sequence<T>.indexOf(s: Sequence<T>) =
+    if (!(s subseq this)) {
+        throw PreconditionFailure("Sequence $s is not contained in $this")
+    } else {
+        (1..len).find { i -> s == drop(i - 1).take(s.len) }!!
+    }
+
 infix fun <T> Sequence<T>.subseq(other: Sequence<T>) =
     this == other || (1..other.len).any { i -> this == other.drop(i - 1).take(len) }
 

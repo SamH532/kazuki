@@ -1,4 +1,4 @@
-package com.anaplan.engineering.kazuki.ksp
+package com.anaplan.engineering.kazuki.ksp.type
 
 enum class KazukiType {
     Sequence1Type,

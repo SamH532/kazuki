@@ -1,4 +1,4 @@
-package com.anaplan.engineering.kazuki.ksp
+package com.anaplan.engineering.kazuki.ksp.type
 
 import com.anaplan.engineering.kazuki.core.PrimitiveInvariant
 import com.google.devtools.ksp.KSTypeNotPresentException
@@ -12,7 +12,7 @@ import com.squareup.kotlinpoet.TypeAliasSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 
 class PrimitiveTypeProcessor(
-    private val processingState: KazukiSymbolProcessor.ProcessingState,
+    private val typeGenerationContext: TypeGenerationContext,
     private val codeGenerator: CodeGenerator,
 ) {
     @OptIn(KspExperimental::class)
@@ -20,7 +20,7 @@ class PrimitiveTypeProcessor(
     internal fun processPrimitiveType(invariant: KSFunctionDeclaration): TypeAliasSpec {
         val type = invariant.getAnnotationsByType(PrimitiveInvariant::class).single()
         if (invariant.returnType?.resolve()?.declaration?.qualifiedName?.asString() != Boolean::class.qualifiedName) {
-            processingState.errors.add("Primitive invariant ${invariant.qualifiedName?.asString()} must return Boolean")
+            typeGenerationContext.errors.add("Primitive invariant ${invariant.qualifiedName?.asString()} must return Boolean")
         }
         val baseQualifiedName = try {
             type.base

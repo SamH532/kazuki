@@ -22,7 +22,7 @@ abstract class FunctionGeneratorTask : DefaultTask() {
 
     @TaskAction
     fun apply() {
-        FileSpec.builder(PackageName, FileName)
+        FileSpec.builder(RootPackageName, FileName)
             .addFileComment("This file is generated -- do not edit!")
             .apply {
                 (0..MaxInputCount).forEach {
@@ -84,7 +84,7 @@ fun FileSpec.Builder.addNArgFunction(argCount: Int) {
         )
         addType(TypeSpec.companionObjectBuilder().apply {
             val invocationsTypeName = ConcurrentHashMap::class.asClassName().parameterizedBy(
-                ClassName(PackageName, className).parameterizedBy((0..argCount).map { STAR }),
+                ClassName(RootPackageName, className).parameterizedBy((0..argCount).map { STAR }),
                 intName
             )
             addProperty(
@@ -180,6 +180,6 @@ fun FileSpec.Builder.addNArgFunction(argCount: Int) {
             defaultValue("null")
         }.build())
         addCode("return $className($CommandPropertyName, $PrePropertyName, $PostPropertyName, $MeasurePropertyName)")
-        returns(ClassName(PackageName, className).parameterizedBy(inputTypeNames + outputTypeName))
+        returns(ClassName(RootPackageName, className).parameterizedBy(inputTypeNames + outputTypeName))
     }.build())
 }

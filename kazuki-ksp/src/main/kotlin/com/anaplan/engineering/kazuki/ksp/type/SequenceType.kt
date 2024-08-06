@@ -1,7 +1,10 @@
-package com.anaplan.engineering.kazuki.ksp
+package com.anaplan.engineering.kazuki.ksp.type
 
 import com.anaplan.engineering.kazuki.core.*
 import com.anaplan.engineering.kazuki.core.internal._KSequence
+import com.anaplan.engineering.kazuki.ksp.InbuiltNames
+import com.anaplan.engineering.kazuki.ksp.lazy
+import com.anaplan.engineering.kazuki.ksp.resolveTypeNameOfAncestorGenericParameter
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -13,18 +16,30 @@ import com.squareup.kotlinpoet.ksp.toTypeVariableName
 
 internal fun TypeSpec.Builder.addSeqType(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
-) = addSequenceType(interfaceClassDcl, processingState, false)
+    makeable: Boolean,
+    typeGenerationContext: TypeGenerationContext,
+) =
+    if (makeable) {
+        addSequenceType(interfaceClassDcl, typeGenerationContext, false)
+    } else {
+        // TODO -- is_ / metadata?
+    }
 
 internal fun TypeSpec.Builder.addSeq1Type(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
-) = addSequenceType(interfaceClassDcl, processingState, true)
+    makeable: Boolean,
+    typeGenerationContext: TypeGenerationContext,
+) = 
+    if (makeable) {
+        addSequenceType(interfaceClassDcl, typeGenerationContext, true)
+    } else {
+        // TODO -- is_ / metadata?
+    }
 
 @OptIn(KspExperimental::class)
 private fun TypeSpec.Builder.addSequenceType(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
+    typeGenerationContext: TypeGenerationContext,
     requiresNonEmpty: Boolean
 ) {
     val interfaceName = interfaceClassDcl.simpleName.asString()
@@ -35,10 +50,11 @@ private fun TypeSpec.Builder.addSequenceType(
         interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments)
     }
     val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
-    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, processingState)
-    if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }.firstOrNull() != null) {
+    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, typeGenerationContext)
+    if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }
+            .firstOrNull() != null) {
         val propertyNames = properties.map { it.simpleName.asString() }.toList()
-        processingState.errors.add("Sequence type $interfaceTypeName may not have properties: $propertyNames")
+        typeGenerationContext.errors.add("Sequence type $interfaceTypeName may not have properties: $propertyNames")
     }
 
     val superInterface = if (requiresNonEmpty) Sequence1::class else Sequence::class
@@ -97,8 +113,8 @@ private fun TypeSpec.Builder.addSequenceType(
                 )
                 .lazy("%M(1 .. len)", correspondingSetConstructor).build()
         )
-        val comparableWith = addComparableWith(interfaceClassDcl, Sequence::class.asClassName(), processingState)
-        addFunctionProviders(functionProviderProperties, processingState)
+        val comparableWith = addComparableWith(interfaceClassDcl, Sequence::class.asClassName(), typeGenerationContext)
+        addFunctionProviders(functionProviderProperties, true, typeGenerationContext)
 
         // N.B. it is important to have properties before init block
         // TODO -- should we get this from super interface -- Sequence1.atLeastOneElement()
@@ -109,7 +125,7 @@ private fun TypeSpec.Builder.addSequenceType(
         }
         addInvariantFrom(
             interfaceClassDcl,
-            processingState,
+            typeGenerationContext,
             additionalInvariantParts
         )
 

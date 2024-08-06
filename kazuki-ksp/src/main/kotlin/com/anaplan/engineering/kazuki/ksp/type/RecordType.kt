@@ -1,12 +1,13 @@
-package com.anaplan.engineering.kazuki.ksp
+package com.anaplan.engineering.kazuki.ksp.type
 
 import com.anaplan.engineering.kazuki.core.FunctionProvider
 import com.anaplan.engineering.kazuki.core.PreconditionFailure
+import com.anaplan.engineering.kazuki.core.internal._Record
 import com.anaplan.engineering.kazuki.ksp.InbuiltNames.coreInternalPackage
 import com.anaplan.engineering.kazuki.ksp.InbuiltNames.corePackage
-import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.isAbstract
-import com.google.devtools.ksp.isAnnotationPresent
+import com.anaplan.engineering.kazuki.ksp.findUnusedGenericName
+import com.anaplan.engineering.kazuki.ksp.superModules
+import com.google.devtools.ksp.*
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSTypeParameter
@@ -21,7 +22,8 @@ import com.squareup.kotlinpoet.ksp.toTypeVariableName
 @OptIn(KspExperimental::class)
 internal fun TypeSpec.Builder.addRecordType(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
+    makeable: Boolean,
+    typeGenerationContext: TypeGenerationContext,
 ) {
     // TODO -- fail if class·is·not interface
     val interfaceType = interfaceClassDcl.asType(emptyList())
@@ -51,10 +53,10 @@ internal fun TypeSpec.Builder.addRecordType(
     val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
     if (properties.any { it.isMutable }) {
         val mutableProperties = properties.filter { it.isMutable }.map { it.simpleName.asString() }.toList()
-        processingState.errors.add("Record type $interfaceTypeName may not have mutable properties: $mutableProperties")
+        typeGenerationContext.errors.add("Record type $interfaceTypeName may not have mutable properties: $mutableProperties")
     }
 
-    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, processingState)
+    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, typeGenerationContext)
     val recordProperties =
         (properties - functionProviderProperties.map { it.property }).filter { !it.isMutable && it.isAbstract() }
             .toList()
@@ -62,7 +64,16 @@ internal fun TypeSpec.Builder.addRecordType(
     val allInterfaceProperties = interfaceClassDcl.getAllProperties().toList()
     val tupleComponentBuilders = interfaceClassDcl.superModules.reversed().map { type ->
         val superClassDcl = type.resolve().declaration as KSClassDeclaration
-        val superProperties = superClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
+        val superProperties = if (superClassDcl.containingFile == null) {
+            // Properties in class file have arbitrary order so identify correct order from generated record
+            val superClassName = superClassDcl.simpleName.asString()
+            val name = "${superClassDcl.packageName.asString()}.${superClassName}_Module.${superClassName}_Rec"
+            val superClassRecordDcl = typeGenerationContext.resolver.getKotlinClassByName(name)!!
+            val recordAnnotation = superClassRecordDcl.getAnnotationsByType(_Record::class).single()
+            recordAnnotation.fields.map { f -> (superClassDcl.declarations.find { it.simpleName.asString() == f } as? KSPropertyDeclaration) }.filterNotNull()
+        } else {
+            superClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>().toList()
+        }
         val superFunctionProviderProperties = superProperties.filter { it.isAnnotationPresent(FunctionProvider::class) }
         val superRecordProperties =
             (superProperties - superFunctionProviderProperties).filter { !it.isMutable && it.isAbstract() }.toList()
@@ -111,6 +122,9 @@ internal fun TypeSpec.Builder.addRecordType(
             addTypeVariables(interfaceTypeArguments)
         }
         addModifiers(KModifier.PRIVATE, KModifier.DATA)
+        addAnnotation(AnnotationSpec.builder(_Record::class).apply {
+            addMember(tupleComponents.joinToString(", ") { "\"" + it.name + "\"" })
+        }.build())
         addSuperinterface(interfaceTypeName)
         addSuperinterface(internalTupleType)
         primaryConstructor(FunSpec.constructorBuilder().apply {
@@ -150,7 +164,11 @@ internal fun TypeSpec.Builder.addRecordType(
                 returns(interfaceTypeName)
                 val params =
                     (1..conNary).map { "t${tupleComponents[it - 1].index}" } + (conNary + 1..tupleComponents.size).map { "_$it" }
-                addStatement("return %N(${params.joinToString(",")})", implClassName)
+                if (makeable) {
+                    addStatement("return %N(${params.joinToString(",")})", implClassName)
+                } else {
+                    addStatement("throw UnsupportedOperationException()")
+                }
             }.build())
         }
 
@@ -159,12 +177,12 @@ internal fun TypeSpec.Builder.addRecordType(
                 enforceInvariantParameterName
             ).build()
         )
-        addFunctionProviders(functionProviderProperties, processingState)
+        addFunctionProviders(functionProviderProperties, makeable, typeGenerationContext)
 
-        val comparableWith = addComparableWith(interfaceClassDcl, tupleClassName, processingState)
+        val comparableWith = addComparableWith(interfaceClassDcl, tupleClassName, typeGenerationContext)
 
         // N.B. it·is·important to have properties before init block
-        addInvariantFrom(interfaceClassDcl, processingState)
+        addInvariantFrom(interfaceClassDcl, typeGenerationContext)
 
         addFunction(
             FunSpec.builder("toString").addModifiers(KModifier.OVERRIDE)
@@ -325,120 +343,122 @@ internal fun TypeSpec.Builder.addRecordType(
         }.build()
     )
 
-    // TODO -- optimization -- if already this type just return it
-    addFunction(
-        FunSpec.builder("as_$interfaceName").apply {
-            if (interfaceTypeArguments.isNotEmpty()) {
-                addTypeVariables(interfaceTypeArguments)
-            }
-            addModifiers(KModifier.PRIVATE)
-            addParameter(otherParameterName, tupleType)
-            returns(interfaceTypeName)
-            addCode(CodeBlock.builder().apply {
-                addStatement(
-                    "return %N(${tupleComponents.joinToString { "%N.%N" }})",
-                    implClassName,
-                    *tupleComponents.flatMap { listOf(otherParameterName, "_${it.index}") }.toTypedArray()
-                )
-            }.build())
-        }.build()
-    )
-
-    addFunction(
-        FunSpec.builder("as_$interfaceName").apply {
-            if (interfaceTypeArguments.isNotEmpty()) {
-                addTypeVariables(interfaceTypeArguments)
-            }
-            addParameter(otherParameterName, Any::class.asClassName())
-            returns(interfaceTypeName)
-            addCode(CodeBlock.builder().apply {
-                val typeArgs = if (interfaceTypeArguments.isEmpty()) {
-                    ""
-                } else {
-                    "<${interfaceTypeArguments.joinToString { "$it" }}>"
-                }
-                beginControlFlow("if (!is_$interfaceName$typeArgs($otherParameterName))")
-                // TODO -- want to print value of other
-                addStatement(
-                    "throw %T(%S)",
-                    PreconditionFailure::class.asClassName(),
-                    "${otherParameterName} is not a $interfaceName"
-                )
-                nextControlFlow("else")
-                addStatement("return as_$interfaceName($otherParameterName as %T)", tupleType)
-                endControlFlow()
-            }.build())
-        }.build()
-    )
-
-    tupleComponents.forEach { tc ->
+    if (makeable) {
+        // TODO -- optimization -- if already this type just return it
         addFunction(
-            FunSpec.builder("component${tc.index}").apply {
+            FunSpec.builder("as_$interfaceName").apply {
                 if (interfaceTypeArguments.isNotEmpty()) {
                     addTypeVariables(interfaceTypeArguments)
                 }
-                receiver(interfaceTypeName)
-                addModifiers(KModifier.OPERATOR)
-                returns(tc.typeName)
-                addStatement("return this.%N", tc.name)
+                addModifiers(KModifier.PRIVATE)
+                addParameter(otherParameterName, tupleType)
+                returns(interfaceTypeName)
+                addCode(CodeBlock.builder().apply {
+                    addStatement(
+                        "return %N(${tupleComponents.joinToString { "%N.%N" }})",
+                        implClassName,
+                        *tupleComponents.flatMap { listOf(otherParameterName, "_${it.index}") }.toTypedArray()
+                    )
+                }.build())
+            }.build()
+        )
+
+        addFunction(
+            FunSpec.builder("as_$interfaceName").apply {
+                if (interfaceTypeArguments.isNotEmpty()) {
+                    addTypeVariables(interfaceTypeArguments)
+                }
+                addParameter(otherParameterName, Any::class.asClassName())
+                returns(interfaceTypeName)
+                addCode(CodeBlock.builder().apply {
+                    val typeArgs = if (interfaceTypeArguments.isEmpty()) {
+                        ""
+                    } else {
+                        "<${interfaceTypeArguments.joinToString { "$it" }}>"
+                    }
+                    beginControlFlow("if (!is_$interfaceName$typeArgs($otherParameterName))")
+                    // TODO -- want to print value of other
+                    addStatement(
+                        "throw %T(%S)",
+                        PreconditionFailure::class.asClassName(),
+                        "$otherParameterName is not a $interfaceName"
+                    )
+                    nextControlFlow("else")
+                    addStatement("return as_$interfaceName($otherParameterName as %T)", tupleType)
+                    endControlFlow()
+                }.build())
+            }.build()
+        )
+
+        tupleComponents.forEach { tc ->
+            addFunction(
+                FunSpec.builder("component${tc.index}").apply {
+                    if (interfaceTypeArguments.isNotEmpty()) {
+                        addTypeVariables(interfaceTypeArguments)
+                    }
+                    receiver(interfaceTypeName)
+                    addModifiers(KModifier.OPERATOR)
+                    returns(tc.typeName)
+                    addStatement("return this.%N", tc.name)
+                }.build()
+            )
+        }
+
+        addFunction(
+            FunSpec.builder("set").apply {
+                val t =
+                    TypeVariableName(findUnusedGenericName(interfaceTypeArguments), bounds = listOf(interfaceTypeName))
+                addTypeVariables(interfaceTypeArguments + t)
+                receiver(t)
+                tupleComponents.forEach { tc ->
+                    addParameter(ParameterSpec.builder(tc.name, tc.typeName).apply {
+                        defaultValue("this.%N", tc.name)
+                    }.build())
+                }
+                returns(t)
+                addCode(CodeBlock.builder().apply {
+                    val constructableClassName = ClassName(
+                        coreInternalPackage,
+                        "_Constructable${tupleComponents.size}"
+                    )
+                    val constructableTypeName =
+                        constructableClassName.parameterizedBy(tupleComponents.map { it.typeName } + t)
+                    val erasedConstructableTypeName =
+                        constructableClassName.parameterizedBy(tupleComponents.map { STAR } + STAR)
+
+
+                    beginControlFlow("if (this·is·%T)", erasedConstructableTypeName)
+                    addStatement(
+                        "return (this·as·%T).construct(${tupleComponents.joinToString { "%N" }})",
+                        constructableTypeName,
+                        *tupleComponents.map { it.name }.toTypedArray()
+                    )
+                    nextControlFlow("else")
+                    addStatement(
+                        "throw %T(%S)",
+                        PreconditionFailure::class.asClassName(),
+                        "Cannot set on instance of $interfaceName created outside Kazuki"
+                    )
+                    endControlFlow()
+                }.build())
+            }.build()
+        )
+
+        addFunction(
+            FunSpec.builder("mk_$interfaceName").apply {
+                if (interfaceTypeArguments.isNotEmpty()) {
+                    addTypeVariables(interfaceTypeArguments)
+                }
+                tupleComponents.forEach { tc -> addParameter(tc.name, tc.typeName) }
+                returns(interfaceTypeName)
+                addStatement(
+                    "return %N(${tupleComponents.joinToString { "%N" }})",
+                    implTypeSpec,
+                    *tupleComponents.map { it.name }.toTypedArray()
+                )
             }.build()
         )
     }
-
-    addFunction(
-        FunSpec.builder("set").apply {
-            val t = TypeVariableName(findUnusedGenericName(interfaceTypeArguments), bounds = listOf(interfaceTypeName))
-            addTypeVariables(interfaceTypeArguments + t)
-            receiver(t)
-            tupleComponents.forEach { tc ->
-                addParameter(ParameterSpec.builder(tc.name, tc.typeName).apply {
-                    defaultValue("this.%N", tc.name)
-                }.build())
-            }
-            returns(t)
-            addCode(CodeBlock.builder().apply {
-                val constructableClassName = ClassName(
-                    coreInternalPackage,
-                    "_Constructable${tupleComponents.size}"
-                )
-                val constructableTypeName =
-                    constructableClassName.parameterizedBy(tupleComponents.map { it.typeName } + t)
-                val erasedConstructableTypeName =
-                    constructableClassName.parameterizedBy(tupleComponents.map { STAR } + STAR)
-
-
-                beginControlFlow("if (this·is·%T)", erasedConstructableTypeName)
-                addStatement(
-                    "return (this·as·%T).construct(${tupleComponents.joinToString { "%N" }})",
-                    constructableTypeName,
-                    *tupleComponents.map { it.name }.toTypedArray()
-                )
-                nextControlFlow("else")
-                addStatement(
-                    "throw %T(%S)",
-                    PreconditionFailure::class.asClassName(),
-                    "Cannot set on instance of $interfaceName created outside Kazuki"
-                )
-                endControlFlow()
-            }.build())
-        }.build()
-    )
-
-    addFunction(
-        FunSpec.builder("mk_$interfaceName").apply {
-            if (interfaceTypeArguments.isNotEmpty()) {
-                addTypeVariables(interfaceTypeArguments)
-            }
-            tupleComponents.forEach { tc -> addParameter(tc.name, tc.typeName) }
-            returns(interfaceTypeName)
-            addStatement(
-                "return %N(${tupleComponents.joinToString { "%N" }})",
-                implTypeSpec,
-                *tupleComponents.map { it.name }.toTypedArray()
-            )
-        }.build()
-    )
-
 }
 
 private const val otherParameterName = "other"

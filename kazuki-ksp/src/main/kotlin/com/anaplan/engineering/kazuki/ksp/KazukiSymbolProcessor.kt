@@ -2,8 +2,10 @@ package com.anaplan.engineering.kazuki.ksp
 
 import com.anaplan.engineering.kazuki.core.Module
 import com.anaplan.engineering.kazuki.core.PrimitiveInvariant
+import com.anaplan.engineering.kazuki.ksp.KazukiSymbolProcessor.KazukiLogger
+import com.anaplan.engineering.kazuki.ksp.type.PrimitiveTypeProcessor
+import com.anaplan.engineering.kazuki.ksp.type.TypeGenerationContext
 import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.getAnnotationsByType
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -15,20 +17,19 @@ import com.google.devtools.ksp.validate
 class KazukiSymbolProcessor(private val environment: SymbolProcessorEnvironment) : SymbolProcessor {
 
     // TODO - auto generate tests for equals, hashcode, toString? -- maybe do with opt-in property
-    private val processingState = ProcessingState(environment)
+    private val processingState = KazukiProcessingState(environment)
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val allModules =
             resolver.getSymbolsWithAnnotation(Module::class.qualifiedName.orEmpty())
                 .filterIsInstance<KSClassDeclaration>().groupBy { it.validate() }
 
-        val primitiveTypeProcessor = PrimitiveTypeProcessor(processingState, environment.codeGenerator)
+        val typeGenerationContext = TypeGenerationContext(processingState, resolver)
+        val primitiveTypeProcessor = PrimitiveTypeProcessor(typeGenerationContext, environment.codeGenerator)
         initializePrimitiveInvariants(resolver, primitiveTypeProcessor)
 
-        val moduleProcessor = ModuleProcessor(processingState, environment.codeGenerator)
-        allModules[true]
-            ?.filter { it.getAnnotationsByType(Module::class).single().makeable }
-            ?.forEach { moduleProcessor.generateImplementation(it) }
+        val moduleProcessor = ModuleProcessor(typeGenerationContext, environment.codeGenerator)
+        allModules[true]?.forEach { moduleProcessor.generateImplementation(it) }
 
         if (processingState.hasErrors()) {
             processingState.errors.forEach {
@@ -48,6 +49,7 @@ class KazukiSymbolProcessor(private val environment: SymbolProcessorEnvironment)
         companion object {
             const val DebugLevelPropertyName = "com.anaplan.engineering.kazuki.compile.debug.level"
         }
+
         // Enables redirection of Kazuki debug logging so that we can view this info without enabling compiler debug
         // logging more widely
         private val debugRedirect by lazy {
@@ -65,12 +67,10 @@ class KazukiSymbolProcessor(private val environment: SymbolProcessorEnvironment)
         fun debug(message: String, symbol: KSNode? = null) = debugRedirect(message, symbol)
     }
 
-    class ProcessingState(environment: SymbolProcessorEnvironment) {
-        val primitiveInvariants: MutableMap<String, KSFunctionDeclaration> = mutableMapOf()
-        val errors: MutableList<String> = mutableListOf()
-        val logger = KazukiLogger(environment)
-
-        fun hasErrors() = errors.isNotEmpty()
+    private class KazukiProcessingState(environment: SymbolProcessorEnvironment): ProcessingState {
+        override val primitiveInvariants: MutableMap<String, KSFunctionDeclaration> = mutableMapOf()
+        override val errors: MutableList<String> = mutableListOf()
+        override val logger = KazukiLogger(environment)
     }
 
     // TOOD - load from libs
@@ -91,4 +91,12 @@ class KazukiSymbolProcessorProvider : SymbolProcessorProvider {
     override fun create(environment: SymbolProcessorEnvironment) =
         KazukiSymbolProcessor(environment)
 
+}
+
+interface ProcessingState {
+    val primitiveInvariants: MutableMap<String, KSFunctionDeclaration>
+    val errors: MutableList<String>
+    val logger: KazukiLogger
+
+    fun hasErrors() = errors.isNotEmpty()
 }

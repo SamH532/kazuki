@@ -18,15 +18,15 @@ import com.squareup.kotlinpoet.ksp.toTypeVariableName
 // TODO -- extract KSP utilities to separate project and test independently!
 
 internal val KSClassDeclaration.allSuperTypes
-    get(): Set<KSTypeReference> =
+    get(): List<KSTypeReference> =
         superTypes.flatMap {
             val st = it.resolve().declaration
-            mutableSetOf(it).apply {
+            mutableListOf(it).apply {
                 if (st is KSClassDeclaration) {
                     addAll(st.allSuperTypes)
                 }
             }
-        }.toSet()
+        }.toList()
 
 
 internal fun KSClassDeclaration.getSuperTypePathTo(qualifiedClassName: String): List<KSTypeReference>? =
