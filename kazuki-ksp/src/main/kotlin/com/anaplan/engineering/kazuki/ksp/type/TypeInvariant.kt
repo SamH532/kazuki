@@ -1,4 +1,4 @@
-package com.anaplan.engineering.kazuki.ksp
+package com.anaplan.engineering.kazuki.ksp.type
 
 import com.anaplan.engineering.kazuki.core.Invariant
 import com.anaplan.engineering.kazuki.core.InvariantFailure
@@ -45,7 +45,7 @@ internal class FreeformInvariant(override val name: String, override val functio
 // TODO properties of collections of primitives with invariants
 internal fun TypeSpec.Builder.addInvariantFrom(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
+    typeGenerationContext: TypeGenerationContext,
     additionalInvariantParts: List<InvariantClause> = emptyList(),
 ) {
     val invariantClauses = mutableListOf<InvariantClause>().apply {
@@ -53,7 +53,7 @@ internal fun TypeSpec.Builder.addInvariantFrom(
             .filter { it.isAnnotationPresent(Invariant::class) }
             .forEach { add(InvariantFunction(it)) }
         interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
-            .map { it to processingState.primitiveInvariants[it.type.resolve().declaration.qualifiedName?.asString()] }
+            .map { it to typeGenerationContext.primitiveInvariants[it.type.resolve().declaration.qualifiedName?.asString()] }
             .filter { it.second != null }
             .forEach { add(InvariantPrimitiveProperty(it.second!!, it.first)) }
         addAll(additionalInvariantParts)
@@ -79,9 +79,9 @@ internal fun TypeSpec.Builder.addInvariantFrom(
         // TODO -- use slf4j and log instance state
         addInitializerBlock(CodeBlock.builder().apply {
             beginControlFlow("if ($enforceInvariantParameterName)")
-            addStatement("val $invariantClauseEvaluationsVariableName = ${evaluateInvariantFunctionName}()")
-            beginControlFlow("if (${invariantClauseEvaluationsVariableName}.any·{ !it.holds })")
-            addStatement("val $failedClausesVariableName = ${invariantClauseEvaluationsVariableName}.filter·{ !it.holds }.joinToString(\"·and·\")·{ it.clause.clauseName }")
+            addStatement("val $invariantClauseEvaluationsVariableName = $evaluateInvariantFunctionName()")
+            beginControlFlow("if ($invariantClauseEvaluationsVariableName.any·{ !it.holds })")
+            addStatement("val $failedClausesVariableName = $invariantClauseEvaluationsVariableName.filter·{ !it.holds }.joinToString(\"·and·\")·{ it.clause.clauseName }")
             addStatement("throw %T(\"${interfaceClassDcl.simpleName.asString()} invariant failed in: \" + $failedClausesVariableName)", InvariantFailure::class)
             endControlFlow()
             endControlFlow()

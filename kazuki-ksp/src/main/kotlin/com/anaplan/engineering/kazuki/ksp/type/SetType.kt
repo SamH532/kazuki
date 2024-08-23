@@ -1,7 +1,8 @@
-package com.anaplan.engineering.kazuki.ksp
+package com.anaplan.engineering.kazuki.ksp.type
 
 import com.anaplan.engineering.kazuki.core.Set1
 import com.anaplan.engineering.kazuki.core.internal._KSet
+import com.anaplan.engineering.kazuki.ksp.resolveTypeNameOfAncestorGenericParameter
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -13,18 +14,30 @@ import com.squareup.kotlinpoet.ksp.toTypeVariableName
 
 internal fun TypeSpec.Builder.addSetType(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
-) = addSetType(interfaceClassDcl, processingState, false)
+    makeable: Boolean,
+    typeGenerationContext: TypeGenerationContext,
+) =
+    if (makeable) {
+        addSetType(interfaceClassDcl, typeGenerationContext, false)
+    } else {
+        // TODO -- is_ / metadata?
+    }
 
 internal fun TypeSpec.Builder.addSet1Type(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
-) = addSetType(interfaceClassDcl, processingState, true)
+    makeable: Boolean,
+    typeGenerationContext: TypeGenerationContext,
+) =
+    if (makeable) {
+        addSetType(interfaceClassDcl, typeGenerationContext, true)
+    } else {
+        // TODO -- is_ / metadata?
+    }
 
 @OptIn(KspExperimental::class)
 private fun TypeSpec.Builder.addSetType(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
+    typeGenerationContext: TypeGenerationContext,
     requiresNonEmpty: Boolean
 ) {
     val interfaceName = interfaceClassDcl.simpleName.asString()
@@ -35,11 +48,11 @@ private fun TypeSpec.Builder.addSetType(
         interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments)
     }
     val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
-    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, processingState)
+    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, typeGenerationContext)
     if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }
             .firstOrNull() != null) {
         val propertyNames = properties.map { it.simpleName.asString() }.toList()
-        processingState.errors.add("Set type $interfaceTypeName may not have properties: $propertyNames")
+        typeGenerationContext.errors.add("Set type $interfaceTypeName may not have properties: $propertyNames")
     }
 
     val superInterface = if (requiresNonEmpty) Set1::class else Set::class
@@ -70,8 +83,8 @@ private fun TypeSpec.Builder.addSetType(
             PropertySpec.builder(elementsPropertyName, superSetTypeName, KModifier.OPEN, KModifier.OVERRIDE)
                 .initializer(elementsPropertyName).build()
         )
-        val comparableWith = addComparableWith(interfaceClassDcl, Set::class.asClassName(), processingState)
-        addFunctionProviders(functionProviderProperties, processingState)
+        val comparableWith = addComparableWith(interfaceClassDcl, Set::class.asClassName(), typeGenerationContext)
+        addFunctionProviders(functionProviderProperties, true, typeGenerationContext)
 
         // N.B. it is important to have properties before init block
         val additionalInvariantParts = if (requiresNonEmpty) {
@@ -81,7 +94,7 @@ private fun TypeSpec.Builder.addSetType(
         }
         addInvariantFrom(
             interfaceClassDcl,
-            processingState,
+            typeGenerationContext,
             additionalInvariantParts
         )
 

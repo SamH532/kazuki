@@ -59,7 +59,7 @@ class TestSequence(
     }
 
     @Test
-    fun insert() {
+    fun insert_element() {
         if (allowsEmpty) {
             assertEquals(create(6), create().insert(6, 1))
         }
@@ -72,6 +72,36 @@ class TestSequence(
         causesPreconditionFailure { create(7, 8).insert(6, 0) }
         causesPreconditionFailure { create(7, 8).insert(6, 4) }
         assertEquals(create(7, 7, 8), create(7, 8).insert(7, 1))
+    }
+
+    @Test
+    fun insert_seq() {
+        if (allowsEmpty) {
+            assertEquals(create(6, 4), create().insert(create(6, 4), 1))
+        }
+        assertEquals(create(6, 4, 7, 8), create(7, 8).insert(create(6, 4), 1))
+        assertEquals(create(6, 4, 7, 8), create(7, 8).insert(create(6, 4), 1))
+        assertEquals(create(6, 4, 7, 8), create(7, 8).insert(create(6, 4), 1))
+        assertEquals(create(6, 4, 7, 8), create(7, 8).insert(create(6, 4), 1))
+        assertEquals(create(7, 6, 4, 8), create(7, 8).insert(create(6, 4), 2))
+        assertEquals(create(7, 8, 6, 4), create(7, 8).insert(create(6, 4), 3))
+        causesPreconditionFailure { create(7, 8).insert(create(6, 4), 0) }
+        causesPreconditionFailure { create(7, 8).insert(create(6, 4), 4) }
+        assertEquals(create(7, 7, 7, 8), create(7, 8).insert(create(7, 7), 1))
+    }
+
+    @Test
+    fun indexOf_seq() {
+        if (allowsEmpty) {
+            causesPreconditionFailure {
+                create().indexOf(create(6, 4))
+            }
+        }
+        assertEquals(1, create(6, 4, 7, 8).indexOf(create(6, 4)))
+        assertEquals(2, create(7, 6, 4, 8).indexOf(create(6, 4)))
+        assertEquals(3, create(7, 8, 6, 4).indexOf(create(6, 4)))
+        causesPreconditionFailure { create(7, 8, 6, 1, 4).indexOf(create(6, 4)) }
+        assertEquals(1, create(6, 4, 6, 4).indexOf(create(6, 4)))
     }
 
     @Test

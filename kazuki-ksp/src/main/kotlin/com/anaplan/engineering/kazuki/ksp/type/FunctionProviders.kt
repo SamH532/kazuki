@@ -1,6 +1,8 @@
-package com.anaplan.engineering.kazuki.ksp
+package com.anaplan.engineering.kazuki.ksp.type
 
 import com.anaplan.engineering.kazuki.core.FunctionProvider
+import com.anaplan.engineering.kazuki.ksp.resolveAncestorTypeParameterNames
+import com.anaplan.engineering.kazuki.ksp.superModules
 import com.google.devtools.ksp.KSTypeNotPresentException
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getAnnotationsByType
@@ -23,9 +25,9 @@ internal data class FunctionProviderProperty(
 @OptIn(KspExperimental::class)
 internal fun getFunctionProviderProperties(
     classDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
+    typeGenerationContext: TypeGenerationContext,
 ): Collection<FunctionProviderProperty> {
-    processingState.logger.debug("Getting function providers for $classDcl", classDcl)
+    typeGenerationContext.logger.debug("Getting function providers for $classDcl", classDcl)
     val properties = classDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
     val localTypeParameterResolver = classDcl.typeParameters.toTypeParameterResolver()
     val localFunctionProviderProperties = properties.filter { it.isAnnotationPresent(FunctionProvider::class) }.map {
@@ -38,7 +40,7 @@ internal fun getFunctionProviderProperties(
         val superFunctionProviderProperties = superProperties.filter { it.isAnnotationPresent(FunctionProvider::class) }
 
         val ancestorTypeParameters = classDcl.resolveAncestorTypeParameterNames(superClassDcl.qualifiedName!!.asString())
-        processingState.logger.debug("Type parameters: $ancestorTypeParameters")
+        typeGenerationContext.logger.debug("Type parameters: $ancestorTypeParameters")
         superFunctionProviderProperties.map {
             // TODO -- there are likely more complex instances here and we could do with a generic utility to resolve more generally
             val providerType = it.type.resolve()
@@ -47,7 +49,7 @@ internal fun getFunctionProviderProperties(
                 val typeArgType = typeArg.type!!.resolve().declaration
                 if (typeArgType is KSTypeParameter) {
                     val resolvedTypeName = ancestorTypeParameters.getTypeName(typeArgType)
-                    processingState.logger.debug("Mapped $typeArgType -> $resolvedTypeName")
+                    typeGenerationContext.logger.debug("Mapped $typeArgType -> $resolvedTypeName")
                     resolvedTypeName
                 } else {
                     typeArg.toTypeName(superTypeParameterResolver)
@@ -76,9 +78,10 @@ internal fun getFunctionProviderProperties(
 @OptIn(KspExperimental::class)
 internal fun TypeSpec.Builder.addFunctionProviders(
     functionProviderProperties: Collection<FunctionProviderProperty>,
-    processingState: KazukiSymbolProcessor.ProcessingState,
+    makeable: Boolean,
+    typeGenerationContext: TypeGenerationContext,
 ) {
-    val logger = processingState.logger
+    val logger = typeGenerationContext.logger
     functionProviderProperties.forEach { property ->
         logger.debug("Adding function provider ${property.typeName}.${property.name}")
         val functionProvider = property.property.getAnnotationsByType(FunctionProvider::class).single()
@@ -94,11 +97,17 @@ internal fun TypeSpec.Builder.addFunctionProviders(
                 property.typeName,
                 KModifier.OVERRIDE
             ).apply {
-                initializer(
-                    CodeBlock.builder().apply {
-                        addStatement("$providerQualifiedName(this)")
-                    }.build()
-                )
+                if (makeable) {
+                    initializer(
+                        CodeBlock.builder().apply {
+                            addStatement("$providerQualifiedName(this)")
+                        }.build()
+                    )
+                } else {
+                    getter(FunSpec.getterBuilder().apply {
+                        addStatement("throw UnsupportedOperationException()")
+                    }.build())
+                }
             }.build()
         )
     }

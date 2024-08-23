@@ -1,6 +1,9 @@
 package com.anaplan.engineering.kazuki.ksp
 
 import com.anaplan.engineering.kazuki.core.*
+import com.anaplan.engineering.kazuki.ksp.type.*
+import com.google.devtools.ksp.KspExperimental
+import com.google.devtools.ksp.getAnnotationsByType
 import com.google.devtools.ksp.getVisibility
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Dependencies
@@ -13,7 +16,7 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 
 internal class ModuleProcessor(
-    private val processingState: KazukiSymbolProcessor.ProcessingState,
+    private val typeGenerationContext: TypeGenerationContext,
     private val codeGenerator: CodeGenerator
 ) {
 
@@ -51,21 +54,23 @@ internal class ModuleProcessor(
         }
     }
 
+    @OptIn(KspExperimental::class)
     private fun processModuleClass(clazz: KSClassDeclaration) {
-        processingState.logger.debug("Processing module: ${clazz.qualifiedName}")
+        typeGenerationContext.logger.debug("Processing module: ${clazz.qualifiedName!!.asString()}")
         val moduleClassName = "${clazz.simpleName.asString()}_Module"
+        val makeable = clazz.getAnnotationsByType(Module::class).single().makeable
         val moduleTypeSpec = TypeSpec.objectBuilder(moduleClassName).apply {
             when (clazz.kazukiType()) {
-                KazukiType.Sequence1Type -> addSeq1Type(clazz, processingState)
-                KazukiType.SequenceType -> addSeqType(clazz, processingState)
-                KazukiType.Set1Type -> addSet1Type(clazz, processingState)
-                KazukiType.SetType -> addSetType(clazz, processingState)
-                KazukiType.QuoteType -> processQuoteType(clazz, processingState)
-                KazukiType.RecordType -> addRecordType(clazz, processingState)
-                KazukiType.InjectiveMappingType -> addInjectiveMappingType(clazz, processingState)
-                KazukiType.InjectiveMapping1Type -> addInjectiveMapping1Type(clazz, processingState)
-                KazukiType.MappingType -> addMappingType(clazz, processingState)
-                KazukiType.Mapping1Type -> addMapping1Type(clazz, processingState)
+                KazukiType.Sequence1Type -> addSeq1Type(clazz, makeable, typeGenerationContext)
+                KazukiType.SequenceType -> addSeqType(clazz, makeable, typeGenerationContext)
+                KazukiType.Set1Type -> addSet1Type(clazz, makeable, typeGenerationContext)
+                KazukiType.SetType -> addSetType(clazz, makeable, typeGenerationContext)
+                KazukiType.QuoteType -> processQuoteType(clazz, makeable, typeGenerationContext)
+                KazukiType.RecordType -> addRecordType(clazz, makeable, typeGenerationContext)
+                KazukiType.InjectiveMappingType -> addInjectiveMappingType(clazz, makeable, typeGenerationContext)
+                KazukiType.InjectiveMapping1Type -> addInjectiveMapping1Type(clazz, makeable, typeGenerationContext)
+                KazukiType.MappingType -> addMappingType(clazz, makeable, typeGenerationContext)
+                KazukiType.Mapping1Type -> addMapping1Type(clazz, makeable, typeGenerationContext)
             }
         }.build()
 
@@ -85,10 +90,10 @@ internal class ModuleProcessor(
 
         val moduleClassName = "${clazz.simpleName.asString()}_Module"
         val moduleTypeSpec = TypeSpec.objectBuilder(moduleClassName).apply {
-            seq1Types.forEach { addSeq1Type(it, processingState) }
-            seqTypes.forEach { addSeqType(it, processingState) }
-            quoteTypes.forEach { processQuoteType(it, processingState) }
-            recordTypes.forEach { addRecordType(it, processingState) }
+            seq1Types.forEach { addSeq1Type(it, true, typeGenerationContext) }
+            seqTypes.forEach { addSeqType(it, true, typeGenerationContext) }
+            quoteTypes.forEach { processQuoteType(it, true, typeGenerationContext) }
+            recordTypes.forEach { addRecordType(it, true, typeGenerationContext) }
         }.build()
 
         writeModule(clazz, moduleClassName, moduleTypeSpec)

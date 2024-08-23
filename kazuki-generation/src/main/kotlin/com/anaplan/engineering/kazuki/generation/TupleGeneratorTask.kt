@@ -22,7 +22,7 @@ abstract class TupleGeneratorTask : DefaultTask() {
 
     @TaskAction
     fun apply() {
-        FileSpec.builder(PackageName, FileName)
+        FileSpec.builder(RootPackageName, FileName)
             .addFileComment("This file is generated -- do not edit!")
             .apply {
                 (1..MaxNary).forEach {
@@ -79,7 +79,7 @@ fun FileSpec.Builder.addNAryTuple(nary: Int) {
             addParameter("_$it", TypeVariableName("T$it"))
         }
         addCode("return $InternalPackageName.$className(${(1..nary).joinToString(", ") { "_$it" }})")
-        returns(ClassName(PackageName, interfaceName).parameterizedBy(typeNames))
+        returns(ClassName(RootPackageName, interfaceName).parameterizedBy(typeNames))
     }.build())
 }
 
@@ -95,7 +95,7 @@ fun FileSpec.Builder.addNAryTupleInternal(nary: Int) {
     }.build()
 
     val publicInterfaceName = publicInterfaceName(nary)
-    val publicInterfaceClassName = ClassName(PackageName, publicInterfaceName)
+    val publicInterfaceClassName = ClassName(RootPackageName, publicInterfaceName)
     addType(TypeSpec.interfaceBuilder(internalInterfaceName).apply {
         addTypeVariables(typeNames + TypeVariableName("T"))
         addSuperinterface(publicInterfaceClassName.parameterizedBy(typeNames))

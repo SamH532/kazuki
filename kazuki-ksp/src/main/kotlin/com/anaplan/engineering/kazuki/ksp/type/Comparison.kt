@@ -1,7 +1,8 @@
-package com.anaplan.engineering.kazuki.ksp
+package com.anaplan.engineering.kazuki.ksp.type
 
 import com.anaplan.engineering.kazuki.core.ComparableProperty
 import com.anaplan.engineering.kazuki.core.ComparableTypeLimit
+import com.anaplan.engineering.kazuki.ksp.superModules
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.isAnnotationPresent
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -22,11 +23,11 @@ internal data class ComparableWith(
 internal fun TypeSpec.Builder.addComparableWith(
     classDcl: KSClassDeclaration,
     default: ClassName,
-    processingState: KazukiSymbolProcessor.ProcessingState
+    typeGenerationContext: TypeGenerationContext
 ): ComparableWith {
-    val comparableProperty = getComparableProperty(classDcl, processingState)
+    val comparableProperty = getComparableProperty(classDcl, typeGenerationContext)
     val comparableWithClass = if (comparableProperty == null) {
-        getExplicitComparableTypeLimit(classDcl, processingState)?.toClassName() ?: default
+        getExplicitComparableTypeLimit(classDcl, typeGenerationContext)?.toClassName() ?: default
     } else {
         val comparableClassDcl = comparableProperty.parentDeclaration as KSClassDeclaration
         comparableClassDcl.toClassName()
@@ -41,39 +42,39 @@ internal fun TypeSpec.Builder.addComparableWith(
 @OptIn(KspExperimental::class)
 fun getExplicitComparableTypeLimit(
     rootClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState
+    typeGenerationContext: TypeGenerationContext
 ): KSClassDeclaration? {
     fun recurse(
         classDcl: KSClassDeclaration,
-        processingState: KazukiSymbolProcessor.ProcessingState
+        typeGenerationContext: TypeGenerationContext
     ) =
         if (classDcl.isAnnotationPresent(ComparableTypeLimit::class)) {
-            processingState.logger.info("found: $classDcl")
+            typeGenerationContext.logger.info("found: $classDcl")
             classDcl
         } else {
             val comparableTypeLimits = classDcl.superTypes.map {
-                getExplicitComparableTypeLimit(it.resolve().declaration as KSClassDeclaration, processingState)
+                getExplicitComparableTypeLimit(it.resolve().declaration as KSClassDeclaration, typeGenerationContext)
             }.filterNotNull().toList()
 
             if (comparableTypeLimits.size > 1) {
-                processingState.errors.add("Ambiguous comparable type limits for $rootClassDcl: $comparableTypeLimits")
+                typeGenerationContext.errors.add("Ambiguous comparable type limits for $rootClassDcl: $comparableTypeLimits")
             }
             comparableTypeLimits.singleOrNull()
         }
 
-    return recurse(rootClassDcl, processingState)
+    return recurse(rootClassDcl, typeGenerationContext)
 }
 
 @OptIn(KspExperimental::class)
 internal fun getComparableProperty(
     classDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState
+    typeGenerationContext: TypeGenerationContext
 ): KSPropertyDeclaration? {
     val className = classDcl.toClassName()
     val localComparableProperties = classDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
         .filter { it.isAnnotationPresent(ComparableProperty::class) }.toList()
     localComparableProperties.filter { it.getter == null }.forEach {
-        processingState.errors.add("Comparable property $className.$it should be backed by function")
+        typeGenerationContext.errors.add("Comparable property $className.$it should be backed by function")
     }
     return if (localComparableProperties.isEmpty()) {
         val nonOverriddenSuperComparableProperties = classDcl.superModules.flatMap { type ->
@@ -84,12 +85,12 @@ internal fun getComparableProperty(
             superFunctionProviderProperties.filter { s -> localComparableProperties.none { l -> s.simpleName.asString() == l.simpleName.asString() } }
         }
         if (nonOverriddenSuperComparableProperties.size > 1) {
-            processingState.errors.add("Unable to determine unique comparable property for $className found $nonOverriddenSuperComparableProperties")
+            typeGenerationContext.errors.add("Unable to determine unique comparable property for $className found $nonOverriddenSuperComparableProperties")
         }
         nonOverriddenSuperComparableProperties.singleOrNull()
     } else {
         if (localComparableProperties.size > 1) {
-            processingState.errors.add("Only one property of $className should be marked as comparable")
+            typeGenerationContext.errors.add("Only one property of $className should be marked as comparable")
         }
         localComparableProperties.singleOrNull()
     }

@@ -1,9 +1,11 @@
-package com.anaplan.engineering.kazuki.ksp
+package com.anaplan.engineering.kazuki.ksp.type
 
 import com.anaplan.engineering.kazuki.core.*
 import com.anaplan.engineering.kazuki.core.internal._KInjectiveMapping
 import com.anaplan.engineering.kazuki.core.internal._KMapping
 import com.anaplan.engineering.kazuki.core.internal._KRelation
+import com.anaplan.engineering.kazuki.ksp.InbuiltNames
+import com.anaplan.engineering.kazuki.ksp.resolveAncestorTypeParameterNames
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -15,28 +17,51 @@ import com.squareup.kotlinpoet.ksp.toTypeVariableName
 
 internal fun TypeSpec.Builder.addMappingType(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
-) = addMappingType(interfaceClassDcl, processingState, false, false)
+    makeable: Boolean,
+    typeGenerationContext: TypeGenerationContext,
+) = if (makeable) {
+    addMappingType(interfaceClassDcl, typeGenerationContext, false, false)
+} else {
+    // TODO -- is_ / metadata?
+}
 
 internal fun TypeSpec.Builder.addMapping1Type(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
-) = addMappingType(interfaceClassDcl, processingState, true, false)
+    makeable: Boolean,
+    typeGenerationContext: TypeGenerationContext,
+) = if (makeable) {
+    addMappingType(interfaceClassDcl, typeGenerationContext, true, false)
+} else {
+    // TODO -- is_ / metadata?
+}
+
 
 internal fun TypeSpec.Builder.addInjectiveMappingType(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
-) = addMappingType(interfaceClassDcl, processingState, false, true)
+    makeable: Boolean,
+    typeGenerationContext: TypeGenerationContext,
+) = if (makeable) {
+    addMappingType(interfaceClassDcl, typeGenerationContext, false, true)
+} else {
+    // TODO -- is_ / metadata?
+}
+
 
 internal fun TypeSpec.Builder.addInjectiveMapping1Type(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
-) = addMappingType(interfaceClassDcl, processingState, true, true)
+    makeable: Boolean,
+    typeGenerationContext: TypeGenerationContext,
+) = if (makeable) {
+    addMappingType(interfaceClassDcl, typeGenerationContext, true, true)
+} else {
+    // TODO -- is_ / metadata?
+}
+
 
 @OptIn(KspExperimental::class)
 private fun TypeSpec.Builder.addMappingType(
     interfaceClassDcl: KSClassDeclaration,
-    processingState: KazukiSymbolProcessor.ProcessingState,
+    typeGenerationContext: TypeGenerationContext,
     requiresNonEmpty: Boolean,
     injective: Boolean,
 ) {
@@ -48,10 +73,11 @@ private fun TypeSpec.Builder.addMappingType(
         interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments)
     }
     val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
-    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, processingState)
-    if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }.firstOrNull() != null) {
+    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, typeGenerationContext)
+    if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }
+            .firstOrNull() != null) {
         val propertyNames = properties.map { it.simpleName.asString() }.toList()
-        processingState.errors.add("Mapping type $interfaceTypeName may not have properties: $propertyNames")
+        typeGenerationContext.errors.add("Mapping type $interfaceTypeName may not have properties: $propertyNames")
     }
 
     val superInterface = if (injective) {
@@ -84,17 +110,13 @@ private fun TypeSpec.Builder.addMappingType(
         )
         addSuperclassConstructorParameter(baseMapPropertyName)
         primaryConstructor(
-            FunSpec.constructorBuilder()
-                .addParameter(baseMapPropertyName, mapType)
-                .addParameter(
-                    ParameterSpec.builder(enforceInvariantParameterName, Boolean::class).defaultValue("true")
-                        .build()
-                )
-                .build()
+            FunSpec.constructorBuilder().addParameter(baseMapPropertyName, mapType).addParameter(
+                    ParameterSpec.builder(enforceInvariantParameterName, Boolean::class).defaultValue("true").build()
+                ).build()
         )
         addProperty(
-            PropertySpec.builder(baseMapPropertyName, mapType, KModifier.OVERRIDE)
-                .initializer(baseMapPropertyName).build()
+            PropertySpec.builder(baseMapPropertyName, mapType, KModifier.OVERRIDE).initializer(baseMapPropertyName)
+                .build()
         )
         val setType = if (requiresNonEmpty) Set1::class else Set::class
         val setFunction = if (requiresNonEmpty) InbuiltNames.asSet1 else InbuiltNames.asSet
@@ -128,10 +150,8 @@ private fun TypeSpec.Builder.addMappingType(
         if (injective) {
             addProperty(
                 PropertySpec.builder(
-                    "inverse",
-                    Mapping::class.asTypeName().parameterizedBy(rangeTypeName, domainTypeName)
-                ).addModifiers(KModifier.OVERRIDE)
-                    .delegate(
+                    "inverse", Mapping::class.asTypeName().parameterizedBy(rangeTypeName, domainTypeName)
+                ).addModifiers(KModifier.OVERRIDE).delegate(
                         CodeBlock.builder().apply {
                             beginControlFlow("lazy")
                             addStatement("${InbuiltNames.corePackage}.as_Mapping($baseSetPropertyName.map { (d, r) -> mk_(r, d) })")
@@ -141,20 +161,18 @@ private fun TypeSpec.Builder.addMappingType(
             )
         }
         // TODO -- should this be Set? -- need _KRelation to extened _KSet if so
-        val comparableWith = addComparableWith(interfaceClassDcl, Relation::class.asClassName(), processingState)
-        addFunctionProviders(functionProviderProperties, processingState)
+        val comparableWith = addComparableWith(interfaceClassDcl, Relation::class.asClassName(), typeGenerationContext)
+        addFunctionProviders(functionProviderProperties, true, typeGenerationContext)
 
         // N.B. it is important to have properties before init block
         val additionalInvariantParts = if (requiresNonEmpty) {
-            listOf(FreeformInvariant("nonEmpty","{ card > 0 }"))
+            listOf(FreeformInvariant("nonEmpty", "{ card > 0 }"))
         } else {
             emptyList()
         }
         // TODO -- should we get this from super interface -- Sequence1.atLeastOneElement()
         addInvariantFrom(
-            interfaceClassDcl,
-            processingState,
-            additionalInvariantParts
+            interfaceClassDcl, typeGenerationContext, additionalInvariantParts
         )
 
         addFunction(
@@ -203,22 +221,18 @@ private fun TypeSpec.Builder.addMappingType(
             FunSpec.builder("construct").apply {
                 addModifiers(KModifier.OVERRIDE)
                 addParameter(
-                    baseMapPropertyName,
-                    mapType
+                    baseMapPropertyName, mapType
                 )
                 returns(interfaceTypeName)
                 addStatement("return %N(%N)", implClassName, baseMapPropertyName)
             }.build()
         )
         addFunction(
-            FunSpec.builder("toString").addModifiers(KModifier.OVERRIDE)
-                .returns(String::class)
-                .addStatement("return \"%N\$%N\"", interfaceName, baseMapPropertyName)
-                .build()
+            FunSpec.builder("toString").addModifiers(KModifier.OVERRIDE).returns(String::class)
+                .addStatement("return \"%N\$%N\"", interfaceName, baseMapPropertyName).build()
         )
         addFunction(
-            FunSpec.builder("hashCode").addModifiers(KModifier.OVERRIDE)
-                .returns(Int::class).apply {
+            FunSpec.builder("hashCode").addModifiers(KModifier.OVERRIDE).returns(Int::class).apply {
                     val hashPropertyName = if (comparableWith.property == null) {
                         baseSetPropertyName
                     } else {
@@ -228,31 +242,25 @@ private fun TypeSpec.Builder.addMappingType(
                 }.build()
         )
         addFunction(
-            FunSpec.builder("isEmpty").addModifiers(KModifier.OVERRIDE)
-                .returns(Boolean::class).addStatement("return %N.isEmpty()", baseMapPropertyName).build()
+            FunSpec.builder("isEmpty").addModifiers(KModifier.OVERRIDE).returns(Boolean::class)
+                .addStatement("return %N.isEmpty()", baseMapPropertyName).build()
         )
         addFunction(
-            FunSpec.builder("iterator").addModifiers(KModifier.OVERRIDE)
-                .returns(
-                    Iterator::class.asClassName()
-                        .parameterizedBy(tupleType)
+            FunSpec.builder("iterator").addModifiers(KModifier.OVERRIDE).returns(
+                    Iterator::class.asClassName().parameterizedBy(tupleType)
                 ).addStatement("return %N.iterator()", baseSetPropertyName).build()
         )
         val equalsParameterName = "other"
         addFunction(
-            FunSpec.builder("equals").addModifiers(KModifier.OVERRIDE)
-                .addParameter(
-                    ParameterSpec.builder(equalsParameterName, Any::class.asTypeName().copy(nullable = true))
-                        .build()
-                )
-                .returns(Boolean::class).addCode(CodeBlock.builder().apply {
+            FunSpec.builder("equals").addModifiers(KModifier.OVERRIDE).addParameter(
+                    ParameterSpec.builder(equalsParameterName, Any::class.asTypeName().copy(nullable = true)).build()
+                ).returns(Boolean::class).addCode(CodeBlock.builder().apply {
                     beginControlFlow("if (this === %N)", equalsParameterName)
                     addStatement("return true")
                     endControlFlow()
 
                     beginControlFlow(
-                        "if (%N !is %T)",
-                        equalsParameterName,
+                        "if (%N !is %T)", equalsParameterName,
                         // TODO -- see comment above about Set
                         _KRelation::class.asClassName().parameterizedBy(STAR, STAR, STAR)
                     )
@@ -270,7 +278,9 @@ private fun TypeSpec.Builder.addMappingType(
                     endControlFlow()
 
                     if (comparableWith.property == null) {
-                        addStatement("return %N == %N.%N", baseSetPropertyName, equalsParameterName, baseSetPropertyName)
+                        addStatement(
+                            "return %N == %N.%N", baseSetPropertyName, equalsParameterName, baseSetPropertyName
+                        )
                     } else {
                         val comparablePropertyName = comparableWith.property.simpleName.getShortName()
                         addStatement(
@@ -303,9 +313,7 @@ private fun TypeSpec.Builder.addMappingType(
                 addTypeVariables(interfaceTypeArguments)
             }
             addParameter(
-                mapletsParameterName,
-                tupleType,
-                KModifier.VARARG
+                mapletsParameterName, tupleType, KModifier.VARARG
             )
             returns(interfaceTypeName)
             addStatement(
@@ -322,8 +330,7 @@ private fun TypeSpec.Builder.addMappingType(
                 addTypeVariables(interfaceTypeArguments)
             }
             addParameter(
-                mapletsParameterName,
-                Iterable::class.asClassName().parameterizedBy(
+                mapletsParameterName, Iterable::class.asClassName().parameterizedBy(
                     tupleType
                 )
             )
@@ -369,9 +376,7 @@ private fun TypeSpec.Builder.addMappingType(
                 addTypeVariables(interfaceTypeArguments)
             }
             addParameter(
-                mapletsParameterName,
-                tupleType,
-                KModifier.VARARG
+                mapletsParameterName, tupleType, KModifier.VARARG
             )
             returns(Boolean::class)
             addStatement(

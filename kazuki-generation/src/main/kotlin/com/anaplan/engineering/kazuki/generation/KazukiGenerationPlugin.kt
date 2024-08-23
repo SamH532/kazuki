@@ -12,19 +12,22 @@ open class KazukiGenerationPluginExtension @javax.inject.Inject constructor(obje
 }
 
 
-internal const val PackageName = "com.anaplan.engineering.kazuki.core"
-internal const val InternalPackageName = "com.anaplan.engineering.kazuki.core.internal"
+internal const val RootPackageName = "com.anaplan.engineering.kazuki.core"
+internal const val InternalPackageName = "$RootPackageName.internal"
 
 class KazukiGenerationPlugin : Plugin<Project> {
 
     override fun apply(project: Project) {
         // TODO -- get this working!?
         project.afterEvaluate {
-            it.extensions.getByType(JavaPluginExtension::class.java).sourceSets.getByName("main").java.srcDirs.add(File(project.buildDir, "generated/kazuki/main/kotlin"))
+            val sourceSets = it.extensions.getByType(JavaPluginExtension::class.java).sourceSets
+            sourceSets.getByName("main").java.srcDirs.add(File(project.buildDir, "generated/kazuki/main/kotlin"))
+            sourceSets.getByName("test").java.srcDirs.add(File(project.buildDir, "generated/kazuki/test/kotlin"))
         }
         project.extensions.create("kazuki", KazukiGenerationPluginExtension::class.java, project.objects)
         project.createKazukiTask("generateFunctions", FunctionGeneratorTask::class.java)
         project.createKazukiTask("generateTuples", TupleGeneratorTask::class.java)
+        project.createKazukiTask("generateRecordTests", RecordTestGeneratorTask::class.java)
     }
 }
 
@@ -40,3 +43,4 @@ internal fun Project.createKazukiTask(name: String, type: Class<out Task>) =
     )
 
 internal fun Project.generationSrcDir() = File(buildDir, "generated/kazuki/main/kotlin")
+internal fun Project.generationTestSrcDir() = File(buildDir, "generated/kazuki/test/kotlin")
