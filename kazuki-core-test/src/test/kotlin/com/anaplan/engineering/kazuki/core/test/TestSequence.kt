@@ -116,7 +116,7 @@ class TestSequence(
         assertEquals(create(6, 7, 8), create(5, 6, 7, 8).drop(1))
         assertEquals(create(7, 8), create(5, 6, 7, 8).drop(2))
     }
-    
+
     @Test
     fun take() {
         if (allowsEmpty) {
@@ -155,7 +155,7 @@ class TestSequence(
         assertEquals(create(5, 5), create(5, 6, 8, 5) drt mk_Set(1, 4))
         assertEquals(create(8), create(5, 6, 7, 8) domRestrictTo mk_Set(4))
     }
-    
+
     @Test
     fun domSubtract() {
         if (allowsEmpty) {
@@ -181,7 +181,7 @@ class TestSequence(
         assertEquals(create(5, 6, 5), create(5, 6, 8, 5) rrt mk_Set(6, 5))
         assertEquals(create(8), create(5, 6, 7, 8) rngRestrictTo mk_Set(8))
     }
-    
+
     @Test
     fun rngSubtract() {
         if (allowsEmpty) {
@@ -210,7 +210,7 @@ class TestSequence(
         assertEquals(create(5, 6, 6, 5, 6), create(5, 6, 6, 5) cat create(6))
         assertEquals(create(5, 6, 8, 5, 6, 5), create(5, 6, 8, 5) cat create(6, 5))
     }
-    
+
     @Test
     fun plus_seq() {
         if (allowsEmpty) {
@@ -245,7 +245,7 @@ class TestSequence(
         assertEquals(1, create(1).first())
         assertEquals(2, create(2, 5, 6).first())
     }
-    
+
     @Test
     fun last() {
         if (allowsEmpty) {
@@ -271,5 +271,33 @@ class TestSequence(
             assertEquals(create(), create(1).tail())
         }
         assertEquals(create(5, 6), create(2, 5, 6).tail())
+    }
+
+    @Test
+    fun dcat_vararg() {
+        if (allowsEmpty) {
+            assertEquals(create(), dcat(create(), create()))
+            assertEquals(create(1, 2), dcat(create(1), create(), create(2)))
+            assertEquals(create(1), dcat(create(1), create(), create()))
+            assertEquals(create(2), dcat(create(), create(), create(2)))
+        }
+        assertEquals(create(1, 1), dcat(create(1), create(1)))
+        assertEquals(create(1, 2, 1), dcat(create(1), create(2), create(1)))
+
+        causesPreconditionFailure {
+            dcat<Int, Sequence<Int>>()
+        }
+    }
+
+    @Test
+    fun dcat_seq() {
+        if (allowsEmpty) {
+            assertEquals(create(), dcat(mk_Seq1(create(), create())))
+            assertEquals(create(1, 2), dcat(mk_Seq1(create(1), create(), create(2))))
+            assertEquals(create(1), dcat(mk_Seq1(create(1), create(), create())))
+            assertEquals(create(2), dcat(mk_Seq1(create(), create(), create(2))))
+        }
+        assertEquals(create(1, 1), dcat(mk_Seq1(create(1), create(1))))
+        assertEquals(create(1, 2, 1), dcat(mk_Seq1(create(1), create(2), create(1))))
     }
 }

@@ -14,3 +14,14 @@ fun <I, O> seq(
     selector: (I) -> O
 ) = as_Seq(provider.filter(filter).map(selector))
 
+fun <I, O> seq1(
+    provider: Iterable<I>,
+    selector: (I) -> O
+) = seq1(provider, { true }, selector)
+
+fun <I, O> seq1(
+    provider: Iterable<I>,
+    filter: (I) -> Boolean,
+    selector: (I) -> O
+) = as_Seq1(provider.filter(filter).map(selector))
+

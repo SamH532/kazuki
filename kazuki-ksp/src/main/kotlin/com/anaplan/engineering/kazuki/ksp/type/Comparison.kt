@@ -33,7 +33,7 @@ internal fun TypeSpec.Builder.addComparableWith(
         comparableClassDcl.toClassName()
     }
     addProperty(
-        PropertySpec.builder(comparableWithPropertyName, comparableWithTypeName, KModifier.OPEN, KModifier.OVERRIDE)
+        PropertySpec.builder(comparableWithPropertyName, comparableWithTypeName, KModifier.OVERRIDE)
             .initializer(CodeBlock.of("$comparableWithClass::class")).build()
     )
     return ComparableWith(comparableProperty, comparableWithClass)

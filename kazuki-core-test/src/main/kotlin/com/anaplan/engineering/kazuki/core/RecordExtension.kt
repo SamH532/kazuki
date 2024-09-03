@@ -91,3 +91,46 @@ interface MaineCoonRecord: CatRecord {
 interface MoggyRecord: CatRecord {
 
 }
+
+@Module(makeable = false)
+interface UnmakeableRecord {
+    val a: Int
+    val b: Int
+    val c: Int
+}
+
+@Module
+interface UnmakeableExtAllFields: UnmakeableRecord {
+    val d: Int
+}
+
+@Module
+interface UnmakeableExtWithDynamic: UnmakeableRecord {
+    val d: Int
+    override val b: Int get() = 2
+}
+
+@Module
+interface UnmakeableInvOnlyAllFields: UnmakeableRecord {
+    @Invariant
+    fun notZero() = a != 0
+}
+
+@Module
+interface UnmakeableInvOnlyWithDynamic: UnmakeableRecord {
+    @Invariant
+    fun notZero() = a != 0
+    override val b: Int get() = 2
+}
+
+@Module
+interface UnmakeableExtAllFieldsC: UnmakeableExtAllFields
+@Module
+interface UnmakeableExtWithDynamicC: UnmakeableExtWithDynamic
+@Module
+interface UnmakeableInvOnlyAllFieldsC: UnmakeableInvOnlyAllFields
+@Module
+interface UnmakeableInvOnlyWithDynamicC: UnmakeableInvOnlyWithDynamic
+
+
+

@@ -41,11 +41,28 @@ fun <T> as_Seq(elems: Iterable<T>): Sequence<T> = __KSequence(elems.toList())
 
 fun <T> as_Seq(elems: Array<T>): Sequence<T> = __KSequence(elems.toList())
 
-fun <T> mk_Seq1(vararg elems: T): Sequence1<T> = __KSequence1(elems.toList())
+fun <T> mk_Seq1(vararg elems: T): Sequence1<T> =
+    if (elems.isEmpty()) {
+        throw PreconditionFailure("Cannot construct empty seq1")
+    } else {
+        __KSequence1(elems.toList())
+    }
 
-fun <T> as_Seq1(elems: Iterable<T>): Sequence1<T> = __KSequence1(elems.toList())
+fun <T> as_Seq1(elems: Iterable<T>): Sequence1<T> {
+    val list = elems.toList()
+    return if (list.isEmpty()) {
+        throw PreconditionFailure("Cannot convert empty collection to seq1")
+    } else {
+        __KSequence1(list)
+    }
+}
 
-fun <T> as_Seq1(elems: Array<T>): Sequence1<T> = __KSequence1(elems.toList())
+fun <T> as_Seq1(elems: Array<T>): Sequence1<T> =
+    if (elems.isEmpty()) {
+        throw PreconditionFailure("Cannot convert empty array to seq1")
+    } else {
+        __KSequence1(elems.toList())
+    }
 
 // TODO -- should we use different names?
 fun <T, S : Sequence<T>> S.drop(n: Int) = transformSequence { it.elements.drop(n) }
@@ -66,6 +83,8 @@ fun <T, S : Sequence<T>> S.insert(s: S, i: nat1) =
     } else {
         transformSequence { it.elements.toMutableList().apply { addAll(i - 1, s) } }
     }
+
+fun <T, S : Sequence<T>> S.filter(fn: (T) -> Boolean) = transformSequence { it.elements.filter(fn) }
 
 fun <T> Sequence<T>.indexOf(s: Sequence<T>) =
     if (!(s subseq this)) {
@@ -130,6 +149,20 @@ fun <T> Sequence<T>.last(): T {
 fun <T> Sequence<T>.head() = first()
 
 fun <T> Sequence<T>.tail() = drop(1)
+
+fun <T, S : Sequence<T>> dcat(seqs: Sequence1<S>) =
+    seqs.first().transformSequence { init ->
+        seqs.drop(1).fold(init) { acc, seq -> acc + seq }
+    }
+
+fun <T, S : Sequence<T>> dcat(vararg seqs: S) =
+    if (seqs.isEmpty()) {
+        throw PreconditionFailure()
+    } else {
+        seqs.first().transformSequence { init ->
+            seqs.drop(1).fold(init) { acc, seq -> acc + seq }
+        }
+    }
 
 
 

@@ -1,8 +1,9 @@
-package com.anaplan.engineering.kazuki.ksp.type
+package com.anaplan.engineering.kazuki.ksp.type.property
 
 import com.anaplan.engineering.kazuki.core.FunctionProvider
 import com.anaplan.engineering.kazuki.ksp.resolveAncestorTypeParameterNames
 import com.anaplan.engineering.kazuki.ksp.superModules
+import com.anaplan.engineering.kazuki.ksp.type.TypeGenerationContext
 import com.google.devtools.ksp.KSTypeNotPresentException
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getAnnotationsByType

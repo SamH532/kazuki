@@ -76,7 +76,7 @@ internal class __KSequence1<T>(override val elements: List<T>) : Sequence1<T>, _
 
     override operator fun get(index: nat1): T {
         if (index < 1 || index > len) {
-            throw PreconditionFailure()
+            throw PreconditionFailure("Index $index is not valid for sequence of length $len")
         }
         return elements.get(index - 1)
     }

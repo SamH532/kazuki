@@ -5,10 +5,10 @@ import com.anaplan.engineering.kazuki.core.internal._KSequence
 import com.anaplan.engineering.kazuki.ksp.InbuiltNames
 import com.anaplan.engineering.kazuki.ksp.lazy
 import com.anaplan.engineering.kazuki.ksp.resolveTypeNameOfAncestorGenericParameter
+import com.anaplan.engineering.kazuki.ksp.type.property.PropertyProcessor
+import com.anaplan.engineering.kazuki.ksp.type.property.addFunctionProviders
 import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -49,14 +49,7 @@ private fun TypeSpec.Builder.addSequenceType(
     } else {
         interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments)
     }
-    val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
-    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, typeGenerationContext)
-    if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }
-            .firstOrNull() != null) {
-        val propertyNames = properties.map { it.simpleName.asString() }.toList()
-        typeGenerationContext.errors.add("Sequence type $interfaceTypeName may not have properties: $propertyNames")
-    }
-
+    val properties = PropertyProcessor(interfaceClassDcl, typeGenerationContext).process()
     val superInterface = if (requiresNonEmpty) Sequence1::class else Sequence::class
     val elementTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface.qualifiedName!!, 0)
     val elementsPropertyName = "elements"
@@ -83,7 +76,7 @@ private fun TypeSpec.Builder.addSequenceType(
                 .build()
         )
         addProperty(
-            PropertySpec.builder(elementsPropertyName, superListTypeName, KModifier.OPEN, KModifier.OVERRIDE)
+            PropertySpec.builder(elementsPropertyName, superListTypeName, KModifier.OVERRIDE)
                 .initializer(elementsPropertyName).build()
         )
         val lenPropertyName = "len"
@@ -114,7 +107,7 @@ private fun TypeSpec.Builder.addSequenceType(
                 .lazy("%M(1 .. len)", correspondingSetConstructor).build()
         )
         val comparableWith = addComparableWith(interfaceClassDcl, Sequence::class.asClassName(), typeGenerationContext)
-        addFunctionProviders(functionProviderProperties, true, typeGenerationContext)
+        addFunctionProviders(properties.functionProviders, true, typeGenerationContext)
 
         // N.B. it is important to have properties before init block
         // TODO -- should we get this from super interface -- Sequence1.atLeastOneElement()
@@ -145,7 +138,7 @@ private fun TypeSpec.Builder.addSequenceType(
                 returns(elementTypeName)
                 addCode(CodeBlock.builder().apply {
                     beginControlFlow("if (%N < 1 || %N > %N)", indexParameterName, indexParameterName, lenPropertyName)
-                    addStatement("throw %T()", PreconditionFailure::class)
+                    addStatement("throw %T(%S)", PreconditionFailure::class, "Index \$$indexParameterName is not valid for sequence of length \$$lenPropertyName")
                     endControlFlow()
                     addStatement("return %N.get(%N - 1)", elementsPropertyName, indexParameterName)
                 }.build())
