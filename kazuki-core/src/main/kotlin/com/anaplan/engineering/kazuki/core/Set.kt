@@ -13,20 +13,32 @@ interface Set1<T> : Set<T> {
 }
 
 
-fun <T> mk_Set(vararg elems: T): Set<T> = __KSet(elems.toSet())
+fun <T> mk_Set(vararg elems: T): Set<T> = __KSet(LinkedHashSet<T>(elems.size).apply { addAll(elems) })
 
-fun <T> as_Set(elems: Iterable<T>): Set<T> = __KSet(elems.toSet())
+fun <T> as_Set(elems: Iterable<T>): Set<T> = __KSet(LinkedHashSet<T>(elems.count()).apply { addAll(elems) })
 
-fun <T> as_Set(elems: Array<T>): Set<T> = __KSet(elems.toSet())
+fun <T> as_Set(elems: Array<T>): Set<T> = __KSet(LinkedHashSet<T>(elems.size).apply { addAll(elems) })
 
 fun <T> mk_Set1(vararg elems: T): Set1<T> =
-    if (elems.isEmpty()) throw PreconditionFailure("Cannot create set1 without elements") else __KSet1(elems.toSet())
+    if (elems.isEmpty()) {
+        throw PreconditionFailure("Cannot create set1 without elements")
+    } else {
+        __KSet1(LinkedHashSet<T>(elems.size).apply { addAll(elems) })
+    }
 
 fun <T> as_Set1(elems: Iterable<T>): Set1<T> =
-    if (elems.count() == 0) throw PreconditionFailure("Cannot convert to set1 without elements") else __KSet1(elems.toSet())
+    if (elems.count() == 0) {
+        throw PreconditionFailure("Cannot convert to set1 without elements")
+    } else {
+        __KSet1(LinkedHashSet<T>(elems.count()).apply { addAll(elems) })
+    }
 
 fun <T> as_Set1(elems: Array<T>): Set1<T> =
-    if (elems.isEmpty()) throw PreconditionFailure("Cannot convert to set1 without elements") else __KSet1(elems.toSet())
+    if (elems.isEmpty()) {
+        throw PreconditionFailure("Cannot convert to set1 without elements")
+    } else {
+        __KSet1(LinkedHashSet<T>(elems.size).apply { addAll(elems) })
+    }
 
 
 infix fun <T> Set<T>.subset(other: Set<T>) = other.containsAll(this)

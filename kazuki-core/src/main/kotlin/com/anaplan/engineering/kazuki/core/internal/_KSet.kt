@@ -33,7 +33,11 @@ internal class __KSet<T>(override val elements: Set<T>) : Set<T> by elements, _K
     override fun toString() = "set$elements"
 }
 
-internal class __KSet1<T>(override val elements: Set<T>) : _KSet<T, Set<T>>, Set1<T>, Set<T> by elements {
+internal class __KSet1<T>(override val elements: Set<T>) :
+    _KSet<T, Set<T>>,
+    Set1<T>,
+    Set<T> by elements
+{
 
     init {
         if (!isValid()) {

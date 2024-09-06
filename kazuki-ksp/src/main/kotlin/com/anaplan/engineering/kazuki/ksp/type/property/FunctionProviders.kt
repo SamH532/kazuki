@@ -40,7 +40,8 @@ internal fun getFunctionProviderProperties(
         val superProperties = superClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
         val superFunctionProviderProperties = superProperties.filter { it.isAnnotationPresent(FunctionProvider::class) }
 
-        val ancestorTypeParameters = classDcl.resolveAncestorTypeParameterNames(superClassDcl.qualifiedName!!.asString())
+        val ancestorTypeParameters =
+            classDcl.resolveAncestorTypeParameterNames(superClassDcl.qualifiedName!!.asString())
         typeGenerationContext.logger.debug("Type parameters: $ancestorTypeParameters")
         superFunctionProviderProperties.map {
             // TODO -- there are likely more complex instances here and we could do with a generic utility to resolve more generally
@@ -64,17 +65,34 @@ internal fun getFunctionProviderProperties(
             FunctionProviderProperty(it, providerTypeName)
         }
     }
-    val resolvedFunctionProviderProperties = (localFunctionProviderProperties + superFunctionProviderProperties).groupBy { it.name }.map { (_, properties) ->
-        if (properties.size == 1) {
-            properties.single()
-        } else {
-            val overridden = properties.mapNotNull { it.property.findOverridee() }
-            properties.single { it.property !in overridden }
-        }
-    }
+    val resolvedFunctionProviderProperties =
+        (localFunctionProviderProperties + superFunctionProviderProperties).groupBy { it.name }
+            .map { (name, fpProperties) -> resolveFunctionProviderProperty(name, fpProperties, typeGenerationContext) }
     return resolvedFunctionProviderProperties.toList()
 }
 
+private fun resolveFunctionProviderProperty(
+    name: String,
+    fpProperties: List<FunctionProviderProperty>,
+    typeGenerationContext: TypeGenerationContext
+) =
+    if (fpProperties.size == 1) {
+        fpProperties.single()
+    } else {
+        val fpPropertiesSet = fpProperties.toSet()
+        val properties = fpPropertiesSet.map { it.property }
+        val overridden = properties.filter { property ->
+            properties.any { typeGenerationContext.resolver.overrides(it, property) }
+        }
+        val nonOverridden = fpPropertiesSet.filter { it.property !in overridden }
+        if (nonOverridden.size != 1) {
+            val nonOverriddenNames = nonOverridden.map { it.property }.joinToString(", ") {
+                it.qualifiedName?.asString() ?: it.simpleName.asString()
+            }
+            typeGenerationContext.logger.error("Found more than one non-overridden property for '$name': $nonOverriddenNames")
+        }
+        nonOverridden.single()
+    }
 
 @OptIn(KspExperimental::class)
 internal fun TypeSpec.Builder.addFunctionProviders(
