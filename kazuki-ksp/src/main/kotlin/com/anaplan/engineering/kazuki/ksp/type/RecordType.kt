@@ -1,25 +1,21 @@
 package com.anaplan.engineering.kazuki.ksp.type
 
-import com.anaplan.engineering.kazuki.core.FunctionProvider
 import com.anaplan.engineering.kazuki.core.PreconditionFailure
 import com.anaplan.engineering.kazuki.core.internal._Record
 import com.anaplan.engineering.kazuki.ksp.InbuiltNames.coreInternalPackage
 import com.anaplan.engineering.kazuki.ksp.InbuiltNames.corePackage
 import com.anaplan.engineering.kazuki.ksp.findUnusedGenericName
 import com.anaplan.engineering.kazuki.ksp.superModules
-import com.google.devtools.ksp.*
+import com.anaplan.engineering.kazuki.ksp.type.property.PropertyProcessor
+import com.anaplan.engineering.kazuki.ksp.type.property.addFunctionProviders
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSTypeParameter
-import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 
-@OptIn(KspExperimental::class)
 internal fun TypeSpec.Builder.addRecordType(
     interfaceClassDcl: KSClassDeclaration,
     makeable: Boolean,
@@ -33,69 +29,10 @@ internal fun TypeSpec.Builder.addRecordType(
     } else {
         interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments)
     }
-    val interfaceTypeParameterResolver = interfaceClassDcl.typeParameters.toTypeParameterResolver()
 
-    data class TupleComponent(
-        val index: Int,
-        val name: String,
-        val typeReference: KSTypeReference,
-        val typeName: TypeName
-    )
+    val properties = PropertyProcessor(interfaceClassDcl, typeGenerationContext, allowFields = true).process()
 
-    data class TupleComponentBuilder(
-        val name: String,
-        val typeReference: KSTypeReference,
-    ) {
-        fun build(index: Int) =
-            TupleComponent(index, name, typeReference, typeReference.toTypeName(interfaceTypeParameterResolver))
-    }
-
-    val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
-    if (properties.any { it.isMutable }) {
-        val mutableProperties = properties.filter { it.isMutable }.map { it.simpleName.asString() }.toList()
-        typeGenerationContext.errors.add("Record type $interfaceTypeName may not have mutable properties: $mutableProperties")
-    }
-
-    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, typeGenerationContext)
-    val recordProperties =
-        (properties - functionProviderProperties.map { it.property }).filter { !it.isMutable && it.isAbstract() }
-            .toList()
-
-    val allInterfaceProperties = interfaceClassDcl.getAllProperties().toList()
-    val tupleComponentBuilders = interfaceClassDcl.superModules.reversed().map { type ->
-        val superClassDcl = type.resolve().declaration as KSClassDeclaration
-        val superProperties = if (superClassDcl.containingFile == null) {
-            // Properties in class file have arbitrary order so identify correct order from generated record
-            val superClassName = superClassDcl.simpleName.asString()
-            val name = "${superClassDcl.packageName.asString()}.${superClassName}_Module.${superClassName}_Rec"
-            val superClassRecordDcl = typeGenerationContext.resolver.getKotlinClassByName(name)!!
-            val recordAnnotation = superClassRecordDcl.getAnnotationsByType(_Record::class).single()
-            recordAnnotation.fields.map { f -> (superClassDcl.declarations.find { it.simpleName.asString() == f } as? KSPropertyDeclaration) }.filterNotNull()
-        } else {
-            superClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>().toList()
-        }
-        val superFunctionProviderProperties = superProperties.filter { it.isAnnotationPresent(FunctionProvider::class) }
-        val superRecordProperties =
-            (superProperties - superFunctionProviderProperties).filter { !it.isMutable && it.isAbstract() }.toList()
-        superRecordProperties.map { superProperty -> allInterfaceProperties.find { interfaceProperty -> superProperty.simpleName == interfaceProperty.simpleName }!! }
-            .associate { property ->
-                property.type.resolve()
-                val name = property.simpleName.asString()
-                name to TupleComponentBuilder(
-                    name,
-                    property.type
-                )
-            }
-    } + recordProperties.associate { property ->
-        val name = property.simpleName.asString()
-        name to TupleComponentBuilder(
-            name,
-            property.type
-        )
-    }
-    val tupleComponents = tupleComponentBuilders.fold(mapOf<String, TupleComponentBuilder>()) { acc, it ->
-        acc + it
-    }.map { (_, v) -> v }.mapIndexed { i, b -> b.build(i + 1) }
+    val tupleComponents = properties.tupleComponents
     if (tupleComponents.isEmpty()) {
         throw IllegalStateException("Record $interfaceTypeName must have fields")
     }
@@ -177,7 +114,7 @@ internal fun TypeSpec.Builder.addRecordType(
                 enforceInvariantParameterName
             ).build()
         )
-        addFunctionProviders(functionProviderProperties, makeable, typeGenerationContext)
+        addFunctionProviders(properties.functionProviders, makeable, typeGenerationContext)
 
         val comparableWith = addComparableWith(interfaceClassDcl, tupleClassName, typeGenerationContext)
 
@@ -379,9 +316,9 @@ internal fun TypeSpec.Builder.addRecordType(
                     beginControlFlow("if (!is_$interfaceName$typeArgs($otherParameterName))")
                     // TODO -- want to print value of other
                     addStatement(
-                        "throw %T(%S)",
+                        "throw %T(%P)",
                         PreconditionFailure::class.asClassName(),
-                        "$otherParameterName is not a $interfaceName"
+                        "\$$otherParameterName is not a $interfaceName"
                     )
                     nextControlFlow("else")
                     addStatement("return as_$interfaceName($otherParameterName as %T)", tupleType)

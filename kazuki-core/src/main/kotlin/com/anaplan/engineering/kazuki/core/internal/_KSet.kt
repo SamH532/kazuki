@@ -33,7 +33,11 @@ internal class __KSet<T>(override val elements: Set<T>) : Set<T> by elements, _K
     override fun toString() = "set$elements"
 }
 
-internal class __KSet1<T>(override val elements: Set<T>) : _KSet<T, Set<T>>, Set1<T>, Set<T> by elements {
+internal class __KSet1<T>(override val elements: Set<T>) :
+    _KSet<T, Set<T>>,
+    Set1<T>,
+    Set<T> by elements
+{
 
     init {
         if (!isValid()) {
@@ -60,6 +64,10 @@ internal class __KSet1<T>(override val elements: Set<T>) : _KSet<T, Set<T>>, Set
 }
 
 internal fun <T, S : Set<T>> S.transformSet(fn: (_KSet<T, S>) -> Collection<T>): S {
-    val kSet = this as? _KSet<T, S> ?: throw PreconditionFailure("Set was implemented outside Kazuki")
-    return kSet.construct(fn(kSet).toSet())
+    val kSet = this as? _KSet<T, S> ?: throw PreconditionFailure("Set ${this::class} was implemented outside Kazuki")
+    val elements = fn(kSet).toSet()
+    if (kSet is Set1<*> && elements.isEmpty()) {
+        throw PreconditionFailure("Cannot create set1 without elements")
+    }
+    return kSet.construct(elements)
 }

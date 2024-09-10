@@ -91,8 +91,8 @@ class TestMapping(
             assertEquals(create(), create(mk_(1, 2)) domRestrictTo mk_Set())
             assertEquals(create(), create(mk_(1, 2)) domRestrictTo mk_Set(2))
         } else {
-            causesInvariantFailure { create(mk_(1, 2)) domRestrictTo mk_Set() }
-            causesInvariantFailure { create(mk_(1, 2)) domRestrictTo mk_Set(2) }
+            causesPreconditionFailure { create(mk_(1, 2)) domRestrictTo mk_Set() }
+            causesPreconditionFailure { create(mk_(1, 2)) domRestrictTo mk_Set(2) }
         }
         assertEquals(create(mk_(1, 2)), create(mk_(1, 2)) domRestrictTo mk_Set(1))
         assertEquals(
@@ -112,7 +112,7 @@ class TestMapping(
             assertEquals(create(), create() domSubtract mk_Set(1))
             assertEquals(create(), create(mk_(1, 2)) domSubtract mk_Set(1))
         } else {
-            causesInvariantFailure { create(mk_(1, 2)) domSubtract mk_Set(1) }
+            causesPreconditionFailure { create(mk_(1, 2)) domSubtract mk_Set(1) }
         }
         assertEquals(create(mk_(1, 2)), create(mk_(1, 2)) domSubtract mk_Set())
         assertEquals(create(mk_(1, 2)), create(mk_(1, 2)) domSubtract mk_Set(2))
@@ -134,8 +134,8 @@ class TestMapping(
             assertEquals(create(), create(mk_(1, 2)) rngRestrictTo mk_Set())
             assertEquals(create(), create(mk_(1, 2)) rngRestrictTo mk_Set(1))
         } else {
-            causesInvariantFailure { create(mk_(1, 2)) rngRestrictTo mk_Set() }
-            causesInvariantFailure { create(mk_(1, 2)) rngRestrictTo mk_Set(1) }
+            causesPreconditionFailure { create(mk_(1, 2)) rngRestrictTo mk_Set() }
+            causesPreconditionFailure { create(mk_(1, 2)) rngRestrictTo mk_Set(1) }
         }
         assertEquals(create(mk_(1, 2)), create(mk_(1, 2)) rngRestrictTo mk_Set(2))
         assertEquals(
@@ -216,7 +216,7 @@ class TestMapping(
     }
 
     @Test
-    fun plus_plural() {
+    fun plus_otherOfSameType() {
         if (allowsEmpty) {
             assertEquals(create(mk_(1, 2)), create() + create(mk_(1, 2)))
         }
@@ -238,6 +238,31 @@ class TestMapping(
             create(mk_(1, 2), mk_(5, 6)) + create(mk_(3, 4), mk_(1, 2))
         )
         causesPreconditionFailure { create(mk_(1, 2), mk_(5, 6)) + create(mk_(3, 4), mk_(1, 3)) }
+    }
+
+    @Test
+    fun plus_set() {
+        if (allowsEmpty) {
+            assertEquals(create(mk_(1, 2)), create() + mk_Set(mk_(1, 2)))
+        }
+        if (injective) {
+            causesPreconditionFailure { create(mk_(1, 2), mk_(5, 6)) + mk_Set(mk_(3, 4), mk_(4, 6)) }
+        } else {
+            assertEquals(
+                create(mk_(1, 2), mk_(5, 6), mk_(3, 4), mk_(4, 6)),
+                create(mk_(1, 2), mk_(5, 6)) + mk_Set(mk_(3, 4), mk_(4, 6))
+            )
+        }
+        assertEquals(create(mk_(1, 2), mk_(2, 3)), create(mk_(1, 2)) + mk_Set(mk_(2, 3)))
+        assertEquals(
+            create(mk_(1, 2), mk_(2, 3), mk_(3, 4), mk_(5, 6)),
+            create(mk_(1, 2), mk_(3, 4)) + mk_Set(mk_(2, 3), mk_(5, 6))
+        )
+        assertEquals(
+            create(mk_(1, 2), mk_(5, 6), mk_(3, 4)),
+            create(mk_(1, 2), mk_(5, 6)) + mk_Set(mk_(3, 4), mk_(1, 2))
+        )
+        causesPreconditionFailure { create(mk_(1, 2), mk_(5, 6)) + mk_Set(mk_(3, 4), mk_(1, 3)) }
     }
 
     @Test

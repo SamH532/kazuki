@@ -5,9 +5,9 @@ import com.anaplan.engineering.kazuki.core.*
 interface _KMapping<D, R, M : Mapping<D, R>> : Mapping<D, R>, _KRelation<D, R, M> {
     fun construct(base: Map<D, R>): M
 
-    override fun construct(baseSet: Set<Tuple2<D, R>>): M =
+    override fun construct(elements: Set<Tuple2<D, R>>): M =
         construct(LinkedHashMap<D, R>().apply {
-            baseSet.forEach {
+            elements.forEach {
                 if (containsKey(it._1)) {
                     throw PreconditionFailure("${it._1} is already present in mapping domain")
                 }
@@ -17,16 +17,16 @@ interface _KMapping<D, R, M : Mapping<D, R>> : Mapping<D, R>, _KRelation<D, R, M
 
     val baseMap: Map<D, R>
 
-    override val baseSet: Set<Tuple2<D, R>>
+    override val elements: Set<Tuple2<D, R>>
         get() = set(baseMap.entries) { (k, v) -> mk_(k, v) }
 
 }
 
 interface _KInjectiveMapping<D, R, M : InjectiveMapping<D, R>> : InjectiveMapping<D, R>, _KMapping<D, R, M> {
 
-    override fun construct(baseSet: Set<Tuple2<D, R>>): M =
+    override fun construct(elements: Set<Tuple2<D, R>>): M =
         construct(LinkedHashMap<D, R>().apply {
-            baseSet.forEach {
+            elements.forEach {
                 if (containsKey(it._1)) {
                     throw PreconditionFailure("${it._1} is already present in mapping domain")
                 }
@@ -40,11 +40,16 @@ interface _KInjectiveMapping<D, R, M : InjectiveMapping<D, R>> : InjectiveMappin
 }
 
 // TODO - generate impls for consistency
-internal class __KMapping<D, R>(override val baseMap: Map<D, R>) : _KMapping<D, R, Mapping<D, R>> {
+internal class __KMapping<D, R>(override val baseMap: Map<D, R>) : _KMapping<D, R, Mapping<D, R>>, _KSet<Tuple2<D, R>, Mapping<D, R>> {
+
+    override fun construct(elements: Set<Tuple2<D, R>>) = super.construct(elements)
+
+    override val elements: Set<Tuple2<D, R>> get() = super.elements
 
     override val comparableWith = Set::class
 
     override fun construct(base: Map<D, R>) = __KMapping(base)
+
 
     override fun get(d: D) = baseMap.get(d) ?: throw PreconditionFailure("$d not in mapping domain")
 
@@ -61,19 +66,26 @@ internal class __KMapping<D, R>(override val baseMap: Map<D, R>) : _KMapping<D, 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Relation<*, *>) return false
-        return baseSet == other
+        return elements == other
     }
 
     override fun hashCode() = baseMap.hashCode()
 
     override fun isEmpty() = baseMap.isEmpty()
 
-    override fun iterator() = baseSet.iterator()
+    override fun iterator() = elements.iterator()
 
     override fun toString() = "map$baseMap"
 }
 
-internal class __KInjectiveMapping<D, R>(override val baseMap: Map<D, R>) : InjectiveMapping<D, R>, _KInjectiveMapping<D, R, InjectiveMapping<D, R>> {
+internal class __KInjectiveMapping<D, R>(override val baseMap: Map<D, R>) :
+    InjectiveMapping<D, R>,
+    _KInjectiveMapping<D, R, InjectiveMapping<D, R>>,
+    _KSet<Tuple2<D, R>, InjectiveMapping<D, R>>
+{
+    override fun construct(elements: Set<Tuple2<D, R>>) = super.construct(elements)
+
+    override val elements: Set<Tuple2<D, R>> get() = super.elements
 
     protected fun isValid(): Boolean = noDuplicatesInRange()
 
@@ -87,7 +99,7 @@ internal class __KInjectiveMapping<D, R>(override val baseMap: Map<D, R>) : Inje
 
     override fun containsAll(elements: Collection<Tuple2<D, R>>) = forall(elements) { contains(it) }
 
-    override val inverse by lazy { as_Mapping(baseSet.map { (d, r) -> mk_(r, d) }) }
+    override val inverse by lazy { as_Mapping(elements.map { (d, r) -> mk_(r, d) }) }
 
     override val dom by lazy { as_Set(baseMap.keys) }
 
@@ -98,14 +110,14 @@ internal class __KInjectiveMapping<D, R>(override val baseMap: Map<D, R>) : Inje
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Relation<*, *>) return false
-        return baseSet == other
+        return elements == other
     }
 
     override fun hashCode() = baseMap.hashCode()
 
     override fun isEmpty() = baseMap.isEmpty()
 
-    override fun iterator() = baseSet.iterator()
+    override fun iterator() = elements.iterator()
 
     override fun toString() = "map$baseMap"
 
@@ -116,7 +128,15 @@ internal class __KInjectiveMapping<D, R>(override val baseMap: Map<D, R>) : Inje
     }
 }
 
-internal class __KInjectiveMapping1<D, R>(override val baseMap: Map<D, R>) : InjectiveMapping1<D, R>, _KInjectiveMapping<D, R, InjectiveMapping1<D, R>> {
+internal class __KInjectiveMapping1<D, R>(override val baseMap: Map<D, R>) :
+    InjectiveMapping1<D, R>,
+    _KInjectiveMapping<D, R, InjectiveMapping1<D, R>>,
+    _KSet<Tuple2<D, R>, InjectiveMapping1<D, R>>
+{
+
+    override fun construct(elements: Set<Tuple2<D, R>>) = super.construct(elements)
+
+    override val elements: Set<Tuple2<D, R>> get() = super.elements
 
     protected fun isValid(): Boolean = noDuplicatesInRange() && atLeastOneElement()
 
@@ -130,7 +150,7 @@ internal class __KInjectiveMapping1<D, R>(override val baseMap: Map<D, R>) : Inj
 
     override fun containsAll(elements: Collection<Tuple2<D, R>>) = forall(elements) { contains(it) }
 
-    override val inverse by lazy { as_Mapping(baseSet.map { (d, r) -> mk_(r, d) }) }
+    override val inverse by lazy { as_Mapping(elements.map { (d, r) -> mk_(r, d) }) }
 
     override val card: nat1 by lazy { baseMap.size }
 
@@ -143,14 +163,14 @@ internal class __KInjectiveMapping1<D, R>(override val baseMap: Map<D, R>) : Inj
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Relation<*, *>) return false
-        return baseSet == other
+        return elements == other
     }
 
     override fun hashCode() = baseMap.hashCode()
 
     override fun isEmpty() = baseMap.isEmpty()
 
-    override fun iterator() = baseSet.iterator()
+    override fun iterator() = elements.iterator()
 
     override fun toString() = "map$baseMap"
 
@@ -163,7 +183,11 @@ internal class __KInjectiveMapping1<D, R>(override val baseMap: Map<D, R>) : Inj
 }
 
 internal class __KMapping1<D, R>(override val baseMap: Map<D, R>) : Mapping1<D, R>,
-    _KMapping<D, R, Mapping1<D, R>> {
+    _KMapping<D, R, Mapping1<D, R>>, _KSet<Tuple2<D, R>, Mapping1<D, R>> {
+
+    override fun construct(elements: Set<Tuple2<D, R>>) = super.construct(elements)
+
+    override val elements: Set<Tuple2<D, R>> get() = super.elements
 
     protected fun isValid(): Boolean = atLeastOneElement()
 
@@ -188,14 +212,14 @@ internal class __KMapping1<D, R>(override val baseMap: Map<D, R>) : Mapping1<D, 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Relation<*, *>) return false
-        return baseSet == other
+        return elements == other
     }
 
     override fun hashCode() = baseMap.hashCode()
 
     override fun isEmpty() = baseMap.isEmpty()
 
-    override fun iterator() = baseSet.iterator()
+    override fun iterator() = elements.iterator()
 
     override fun toString() = "map1$baseMap"
 
@@ -208,5 +232,9 @@ internal class __KMapping1<D, R>(override val baseMap: Map<D, R>) : Mapping1<D, 
 
 internal fun <D, R, T : Mapping<D, R>> T.transformMapping(fn: (_KMapping<D, R, T>) -> Map<D, R>): T {
     val kMap = this as? _KMapping<D, R, T> ?: throw PreconditionFailure("Mapping was implemented outside Kazuki")
-    return kMap.construct(fn(kMap))
+    val base = fn(kMap)
+    if (kMap is Mapping1<*,*> && base.isEmpty()) {
+        throw PreconditionFailure("Cannot create Mapping1 without elements")
+    }
+    return kMap.construct(base)
 }

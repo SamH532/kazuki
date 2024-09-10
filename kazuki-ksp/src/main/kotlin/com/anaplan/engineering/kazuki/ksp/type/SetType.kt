@@ -3,10 +3,10 @@ package com.anaplan.engineering.kazuki.ksp.type
 import com.anaplan.engineering.kazuki.core.Set1
 import com.anaplan.engineering.kazuki.core.internal._KSet
 import com.anaplan.engineering.kazuki.ksp.resolveTypeNameOfAncestorGenericParameter
+import com.anaplan.engineering.kazuki.ksp.type.property.PropertyProcessor
+import com.anaplan.engineering.kazuki.ksp.type.property.addFunctionProviders
 import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -47,13 +47,7 @@ private fun TypeSpec.Builder.addSetType(
     } else {
         interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments)
     }
-    val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
-    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, typeGenerationContext)
-    if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }
-            .firstOrNull() != null) {
-        val propertyNames = properties.map { it.simpleName.asString() }.toList()
-        typeGenerationContext.errors.add("Set type $interfaceTypeName may not have properties: $propertyNames")
-    }
+    val properties = PropertyProcessor(interfaceClassDcl, typeGenerationContext).process()
 
     val superInterface = if (requiresNonEmpty) Set1::class else Set::class
     val elementTypeName = interfaceClassDcl.resolveTypeNameOfAncestorGenericParameter(superInterface.qualifiedName!!, 0)
@@ -80,11 +74,11 @@ private fun TypeSpec.Builder.addSetType(
                 .build()
         )
         addProperty(
-            PropertySpec.builder(elementsPropertyName, superSetTypeName, KModifier.OPEN, KModifier.OVERRIDE)
+            PropertySpec.builder(elementsPropertyName, superSetTypeName, KModifier.OVERRIDE)
                 .initializer(elementsPropertyName).build()
         )
         val comparableWith = addComparableWith(interfaceClassDcl, Set::class.asClassName(), typeGenerationContext)
-        addFunctionProviders(functionProviderProperties, true, typeGenerationContext)
+        addFunctionProviders(properties.functionProviders, true, typeGenerationContext)
 
         // N.B. it is important to have properties before init block
         val additionalInvariantParts = if (requiresNonEmpty) {

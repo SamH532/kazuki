@@ -17,15 +17,13 @@ interface InjectiveMapping<D, R> : Mapping<D, R> {
 
 interface InjectiveMapping1<D, R> : InjectiveMapping<D, R>, Mapping1<D, R>
 
-interface Mapping1<D, R> : Mapping<D, R> {
+interface Mapping1<D, R> : Mapping<D, R>,  Set1<Tuple2<D, R>>  {
     val card: nat1
 
     override val dom: Set1<D>
 
     override val rng: Set1<R>
 
-    @Invariant
-    fun atLeastOneElement() = card > 0
 }
 
 fun <D, R> as_Mapping(maplets: Iterable<Tuple2<D, R>>): Mapping<D, R> =
@@ -87,37 +85,7 @@ fun <D, R> mk_Mapping1(vararg maplets: Tuple2<D, R>): Mapping1<D, R> =
         maplets.forEach { put(it._1, it._2) }
     })
 
-// TODO is there any benefit to defining munion here?
-// - helps to see that relation plus is not applicable due to typing issue (otherwise it just
-// uses set.plus and you can't see why)
 infix fun <D, R, M : Mapping<D, R>> M.munion(r: Relation<D, R>) = this + r
-
-//// TODO is there any benefit to defining plus here?
-//infix operator fun <D, R, M : Mapping<D, R>> M.plus(t: Tuple2<D, R>) = transformMapping {
-//    if (t._1 in dom && get(t._1) != t._2) throw PreconditionFailure("${t._1} is already present with different mapping")
-//    LinkedHashMap<D, R>().apply {
-//        put(t._1, t._2)
-//        it.forEach { put(it._1, it._2) }
-//    }
-//}
-//
-//// TODO is there any benefit to defining plus here?
-//infix operator fun <D, R, M : Mapping<D, R>> M.plus(r: Relation<D, R>) = transformMapping {
-//    val conflictingIntersection = r.filter { t ->
-//        t._1 in dom && get(t._1) != t._2
-//    }
-//    if (conflictingIntersection.isNotEmpty()) {
-//        throw PreconditionFailure("$conflictingIntersection are already present with different mapping")
-//    }
-//    LinkedHashMap<D, R>().apply {
-//        r.forEach {
-//            put(it._1, it._2)
-//        }
-//        it.forEach {
-//            put(it._1, it._2)
-//        }
-//    }
-//}
 
 infix operator fun <D, R, M : Mapping<D, R>> M.times(t: Tuple2<D, R>) = transformMapping {
     LinkedHashMap<D, R>().apply {

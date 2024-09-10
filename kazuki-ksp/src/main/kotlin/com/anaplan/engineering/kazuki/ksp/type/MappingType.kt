@@ -4,12 +4,13 @@ import com.anaplan.engineering.kazuki.core.*
 import com.anaplan.engineering.kazuki.core.internal._KInjectiveMapping
 import com.anaplan.engineering.kazuki.core.internal._KMapping
 import com.anaplan.engineering.kazuki.core.internal._KRelation
+import com.anaplan.engineering.kazuki.core.internal._KSet
 import com.anaplan.engineering.kazuki.ksp.InbuiltNames
 import com.anaplan.engineering.kazuki.ksp.resolveAncestorTypeParameterNames
+import com.anaplan.engineering.kazuki.ksp.type.property.PropertyProcessor
+import com.anaplan.engineering.kazuki.ksp.type.property.addFunctionProviders
 import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -72,14 +73,7 @@ private fun TypeSpec.Builder.addMappingType(
     } else {
         interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments)
     }
-    val properties = interfaceClassDcl.declarations.filterIsInstance<KSPropertyDeclaration>()
-    val functionProviderProperties = getFunctionProviderProperties(interfaceClassDcl, typeGenerationContext)
-    if ((properties - functionProviderProperties.map { it.property }).filter { it.isAbstract() }
-            .firstOrNull() != null) {
-        val propertyNames = properties.map { it.simpleName.asString() }.toList()
-        typeGenerationContext.errors.add("Mapping type $interfaceTypeName may not have properties: $propertyNames")
-    }
-
+    val properties = PropertyProcessor(interfaceClassDcl, typeGenerationContext).process()
     val superInterface = if (injective) {
         if (requiresNonEmpty) InjectiveMapping1::class else InjectiveMapping::class
     } else {
@@ -92,7 +86,7 @@ private fun TypeSpec.Builder.addMappingType(
     val domainTypeName = ancestorTypeParameters.getTypeName(0)
     val rangeTypeName = ancestorTypeParameters.getTypeName(1)
     val baseMapPropertyName = "baseMap"
-    val baseSetPropertyName = "baseSet"
+    val baseSetPropertyName = "elements"
     val superMappingTypeName = mappingType.toClassName().parameterizedBy(domainTypeName, rangeTypeName)
     val suffix = if (requiresNonEmpty) "Mapping1" else "Mapping"
     val implClassName = "${interfaceName}_$suffix"
@@ -105,9 +99,10 @@ private fun TypeSpec.Builder.addMappingType(
         addModifiers(KModifier.PRIVATE)
         addSuperinterface(interfaceTypeName)
         val mappingClass = if (injective) _KInjectiveMapping::class else _KMapping::class
-        addSuperinterface(
-            mappingClass.asClassName().parameterizedBy(domainTypeName, rangeTypeName, interfaceTypeName)
-        )
+        addSuperinterfaces(listOf(
+            mappingClass.asClassName().parameterizedBy(domainTypeName, rangeTypeName, interfaceTypeName),
+            _KSet::class.asClassName().parameterizedBy(tupleType, interfaceTypeName)
+        ))
         addSuperclassConstructorParameter(baseMapPropertyName)
         primaryConstructor(
             FunSpec.constructorBuilder().addParameter(baseMapPropertyName, mapType).addParameter(
@@ -140,6 +135,13 @@ private fun TypeSpec.Builder.addMappingType(
             PropertySpec.builder("size", Int::class.asTypeName()).addModifiers(KModifier.OVERRIDE)
                 .delegate("$baseMapPropertyName::size").build()
         )
+        addProperty(
+            PropertySpec.builder(baseSetPropertyName, Set::class.asClassName().parameterizedBy(tupleType))
+                .addModifiers(KModifier.OVERRIDE)
+                .getter(
+                    FunSpec.getterBuilder().addStatement("return super.$baseSetPropertyName").build()
+                ).build()
+        )
         if (requiresNonEmpty) {
             addProperty(
                 PropertySpec.builder("card", nat1::class.asTypeName()).addModifiers(KModifier.OVERRIDE)
@@ -162,7 +164,7 @@ private fun TypeSpec.Builder.addMappingType(
         }
         // TODO -- should this be Set? -- need _KRelation to extened _KSet if so
         val comparableWith = addComparableWith(interfaceClassDcl, Relation::class.asClassName(), typeGenerationContext)
-        addFunctionProviders(functionProviderProperties, true, typeGenerationContext)
+        addFunctionProviders(properties.functionProviders, true, typeGenerationContext)
 
         // N.B. it is important to have properties before init block
         val additionalInvariantParts = if (requiresNonEmpty) {
@@ -225,6 +227,16 @@ private fun TypeSpec.Builder.addMappingType(
                 )
                 returns(interfaceTypeName)
                 addStatement("return %N(%N)", implClassName, baseMapPropertyName)
+            }.build()
+        )
+        addFunction(
+            FunSpec.builder("construct").apply {
+                addModifiers(KModifier.OVERRIDE)
+                addParameter(
+                    baseSetPropertyName, Set::class.asClassName().parameterizedBy(tupleType)
+                )
+                returns(interfaceTypeName)
+                addStatement("return super.construct(%N)", baseSetPropertyName)
             }.build()
         )
         addFunction(

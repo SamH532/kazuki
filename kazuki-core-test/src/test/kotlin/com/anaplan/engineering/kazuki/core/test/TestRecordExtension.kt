@@ -28,6 +28,15 @@ import com.anaplan.engineering.kazuki.core.RecordInvOnlyExtension_Module.mk_Reco
 import com.anaplan.engineering.kazuki.core.Record_Module.as_Record
 import com.anaplan.engineering.kazuki.core.Record_Module.is_Record
 import com.anaplan.engineering.kazuki.core.Record_Module.mk_Record
+import com.anaplan.engineering.kazuki.core.Tuple4
+import com.anaplan.engineering.kazuki.core.UnmakeableExtAllFieldsC_Module.mk_UnmakeableExtAllFieldsC
+import com.anaplan.engineering.kazuki.core.UnmakeableExtAllFields_Module.mk_UnmakeableExtAllFields
+import com.anaplan.engineering.kazuki.core.UnmakeableExtWithDynamicC_Module.mk_UnmakeableExtWithDynamicC
+import com.anaplan.engineering.kazuki.core.UnmakeableExtWithDynamic_Module.mk_UnmakeableExtWithDynamic
+import com.anaplan.engineering.kazuki.core.UnmakeableInvOnlyAllFieldsC_Module.mk_UnmakeableInvOnlyAllFieldsC
+import com.anaplan.engineering.kazuki.core.UnmakeableInvOnlyAllFields_Module.mk_UnmakeableInvOnlyAllFields
+import com.anaplan.engineering.kazuki.core.UnmakeableInvOnlyWithDynamicC_Module.mk_UnmakeableInvOnlyWithDynamicC
+import com.anaplan.engineering.kazuki.core.UnmakeableInvOnlyWithDynamic_Module.mk_UnmakeableInvOnlyWithDynamic
 import com.anaplan.engineering.kazuki.core.mk_Set
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -175,7 +184,7 @@ class TestRecordExtension {
         assertEquals(2, c)
         assertEquals(mk_Set(3), d)
 
-        val (e,f,g) = mk_RecordDblExtension(2, "3", 4.0)
+        val (e, f, g) = mk_RecordDblExtension(2, "3", 4.0)
         assertEquals(2, e)
         assertEquals("3", f)
         assertEquals(4.0, g)
@@ -189,4 +198,25 @@ class TestRecordExtension {
     }
 
     // TODO -- test overriding variable with more specific type
+
+    @Test
+    fun extendingUnmakeable() {
+        listOf(
+            mk_UnmakeableExtAllFields(1, 2, 3, 4),
+            mk_UnmakeableExtWithDynamic(1, 3, 4),
+            mk_UnmakeableInvOnlyAllFields(1, 2, 3),
+            mk_UnmakeableInvOnlyWithDynamic(1, 3),
+            mk_UnmakeableExtAllFieldsC(1, 2, 3, 4),
+            mk_UnmakeableExtWithDynamicC(1, 3, 4),
+            mk_UnmakeableInvOnlyAllFieldsC(1, 2, 3),
+            mk_UnmakeableInvOnlyWithDynamicC(1, 3),
+        ).forEach {
+            assertEquals(1, it.a)
+            assertEquals(2, it.b)
+            assertEquals(3, it.c)
+            if (it is Tuple4<*, *, *, *>) {
+                assertEquals(4, it._4)
+            }
+        }
+    }
 }
