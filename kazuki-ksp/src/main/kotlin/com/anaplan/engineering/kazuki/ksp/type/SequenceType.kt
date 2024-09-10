@@ -138,7 +138,7 @@ private fun TypeSpec.Builder.addSequenceType(
                 returns(elementTypeName)
                 addCode(CodeBlock.builder().apply {
                     beginControlFlow("if (%N < 1 || %N > %N)", indexParameterName, indexParameterName, lenPropertyName)
-                    addStatement("throw %T(%S)", PreconditionFailure::class, "Index \$$indexParameterName is not valid for sequence of length \$$lenPropertyName")
+                    addStatement("throw %T(%P)", PreconditionFailure::class, "Index \$$indexParameterName is not valid for sequence of length \$$lenPropertyName")
                     endControlFlow()
                     addStatement("return %N.get(%N - 1)", elementsPropertyName, indexParameterName)
                 }.build())

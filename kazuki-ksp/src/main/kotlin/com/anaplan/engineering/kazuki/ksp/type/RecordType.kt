@@ -316,9 +316,9 @@ internal fun TypeSpec.Builder.addRecordType(
                     beginControlFlow("if (!is_$interfaceName$typeArgs($otherParameterName))")
                     // TODO -- want to print value of other
                     addStatement(
-                        "throw %T(%S)",
+                        "throw %T(%P)",
                         PreconditionFailure::class.asClassName(),
-                        "$otherParameterName is not a $interfaceName"
+                        "\$$otherParameterName is not a $interfaceName"
                     )
                     nextControlFlow("else")
                     addStatement("return as_$interfaceName($otherParameterName as %T)", tupleType)
