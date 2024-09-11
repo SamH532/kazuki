@@ -26,21 +26,21 @@ internal class __KSequence<T>(override val elements: List<T>) : Sequence<T>, Lis
 
     override operator fun get(index: nat1): T {
         if (index < 1 || index > len) {
-            throw PreconditionFailure()
+            throw PreconditionFailure("Index $index out of range")
         }
         return elements.get(index - 1)
     }
 
     override fun indexOf(element: T): nat1 {
         if (element !in elements) {
-            throw PreconditionFailure()
+            throw PreconditionFailure("Element $element not in $this")
         }
         return elements.indexOf(element) + 1
     }
 
     override fun lastIndexOf(element: T): nat1 {
         if (element !in elements) {
-            throw PreconditionFailure()
+            throw PreconditionFailure("Element $element not in $this")
         }
         return elements.lastIndexOf(element) + 1
     }

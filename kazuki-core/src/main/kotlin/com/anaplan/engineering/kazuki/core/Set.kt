@@ -54,6 +54,13 @@ val <T> Set<T>.card get() = size
 fun <T> Set<T>.arbitrary() =
     if (isEmpty()) throw PreconditionFailure("Cannot get arbitrary member of emptyset") else first()
 
+fun <T> Set<T>.single(): T {
+    if (card != 1) {
+        throw PreconditionFailure("Cannot get single item for set with cardinality $card")
+    }
+    return first()
+}
+
 fun <T> dunion(sets: Set<Set<T>>) = as_Set(sets.flatten())
 
 fun <T> dunion(vararg sets: Set<T>) = dunion(sets.toSet())

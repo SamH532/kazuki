@@ -111,7 +111,7 @@ class TestSequence(
             assertEquals(create(), create(1).drop(1))
             assertEquals(create(), create(1).drop(2))
         } else {
-            causesInvariantFailure { create(1).drop(1) }
+            causesPreconditionFailure { create(1).drop(1) }
         }
         assertEquals(create(6, 7, 8), create(5, 6, 7, 8).drop(1))
         assertEquals(create(7, 8), create(5, 6, 7, 8).drop(2))
@@ -125,7 +125,7 @@ class TestSequence(
             assertEquals(create(1), create(1).take(1))
             assertEquals(create(1), create(1).take(2))
         } else {
-            causesInvariantFailure { create(1).take(0) }
+            causesPreconditionFailure { create(1).take(0) }
         }
         assertEquals(create(5), create(5, 6, 7, 8).take(1))
         assertEquals(create(5, 6), create(5, 6, 7, 8).take(2))
