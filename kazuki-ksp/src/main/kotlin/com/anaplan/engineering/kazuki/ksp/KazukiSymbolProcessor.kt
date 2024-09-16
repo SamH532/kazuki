@@ -100,3 +100,5 @@ interface ProcessingState {
 
     fun hasErrors() = errors.isNotEmpty()
 }
+
+internal const val InvalidInternalStateType = "Internal state should not be a Kazuki-generated object"

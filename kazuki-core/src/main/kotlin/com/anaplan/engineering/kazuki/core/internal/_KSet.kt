@@ -5,7 +5,7 @@ import com.anaplan.engineering.kazuki.core.PreconditionFailure
 import com.anaplan.engineering.kazuki.core.Set1
 import kotlin.reflect.KClass
 
-interface _KSet<T, S : Set<T>> : Set<T> {
+interface _KSet<T, S : Set<T>> : Set<T>, _KazukiObject {
     fun construct(elements: Set<T>): S
 
     val elements: Set<T>
@@ -15,6 +15,12 @@ interface _KSet<T, S : Set<T>> : Set<T> {
 
 // TODO - generate impls
 internal class __KSet<T>(override val elements: Set<T>) : Set<T> by elements, _KSet<T, Set<T>> {
+
+    init {
+        assert(elements !is _KazukiObject) {
+            "Internal state should not be a Kazuki-generated object"
+        }
+    }
 
     override fun construct(elements: Set<T>) = __KSet(elements)
 
@@ -40,6 +46,9 @@ internal class __KSet1<T>(override val elements: Set<T>) :
 {
 
     init {
+        assert(elements !is _KazukiObject) {
+            "Internal state should not be a Kazuki-generated object"
+        }
         if (!isValid()) {
             throw InvariantFailure()
         }

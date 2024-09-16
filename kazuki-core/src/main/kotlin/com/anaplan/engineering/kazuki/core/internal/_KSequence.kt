@@ -3,7 +3,7 @@ package com.anaplan.engineering.kazuki.core.internal
 import com.anaplan.engineering.kazuki.core.*
 import kotlin.reflect.KClass
 
-interface _KSequence<T, S : Sequence<T>>: Sequence<T> {
+interface _KSequence<T, S : Sequence<T>>: Sequence<T>, _KazukiObject {
     fun construct(elements: List<T>): S
 
     val elements: List<T>
@@ -19,6 +19,12 @@ internal fun <T, S : Sequence<T>> S.transformSequence(fn: (_KSequence<T, S>) -> 
 // TODO generate impls to ensure consistenct
 internal class __KSequence<T>(override val elements: List<T>) : Sequence<T>, List<T> by elements,
     _KSequence<T, Sequence<T>> {
+
+    init {
+        assert(elements !is _KazukiObject) {
+            "Internal state should not be a Kazuki-generated object"
+        }
+    }
 
     override val comparableWith = Sequence::class
 
@@ -84,8 +90,11 @@ internal class __KSequence1<T>(override val elements: List<T>) : Sequence1<T>, _
     override val comparableWith = Sequence::class
 
     init {
+        assert(elements !is _KazukiObject) {
+            "Internal state should not be a Kazuki-generated object"
+        }
         if (!isValid()) {
-            throw InvariantFailure()
+            throw InvariantFailure("Cannot create empty seq1")
         }
     }
 

@@ -6,7 +6,7 @@ import com.anaplan.engineering.kazuki.core.internal.transformSequence
 import kotlin.collections.ArrayList
 
 // TODO should sequence inherit from relation rather than list?
-interface Sequence<T> : List<T> {
+interface Sequence<out T> : List<T> {
 
     val len: nat
 
@@ -14,17 +14,17 @@ interface Sequence<T> : List<T> {
 
     val inds: Set<nat1>
 
-    override fun indexOf(element: T): nat1
+    override fun indexOf(element: @UnsafeVariance T): nat1
 
-    override fun lastIndexOf(element: T): nat1
+    override fun lastIndexOf(element: @UnsafeVariance T): nat1
 
 }
 
-interface Sequence1<T> : Sequence<T> {
+interface Sequence1<out T> : Sequence<T> {
 
     override val len: nat1
 
-    override val elems: Set1<T>
+    override val elems: Set1<@UnsafeVariance T>
 
     override val inds: Set1<nat1>
 
@@ -99,7 +99,13 @@ fun <T, S : Sequence<T>> S.insert(s: S, i: nat1) =
         transformSequence { it.elements.toMutableList().apply { addAll(i - 1, s) } }
     }
 
-fun <T, S : Sequence<T>> S.filter(fn: (T) -> Boolean) = transformSequence { it.elements.filter(fn) }
+fun <T, S : Sequence<T>> S.filter(fn: (T) -> Boolean) = transformSequence {
+    val filtered  = it.elements.filter(fn)
+    if (filtered.isEmpty() && this is Sequence1<*>) {
+        throw PreconditionFailure("Cannot create empty seq1")
+    }
+    filtered
+}
 
 fun <T> Sequence<T>.indexOf(s: Sequence<T>) =
     if (!(s subseq this)) {
@@ -176,7 +182,7 @@ fun <T, S : Sequence<T>> dcat(seqs: Sequence1<S>) =
         seqs.first()
     } else {
         seqs.first().transformSequence { init ->
-            seqs.drop(1).fold(init) { acc, seq -> acc + seq }
+            seqs.drop(1).fold(init.elements) { acc, seq -> acc + seq }
         }
     }
 
@@ -187,7 +193,7 @@ fun <T, S : Sequence<T>> dcat(vararg seqs: S) =
         seqs.first()
     } else {
         seqs.first().transformSequence { init ->
-            seqs.drop(1).fold(init) { acc, seq -> acc + seq }
+            seqs.drop(1).fold(init.elements) { acc, seq -> acc + seq }
         }
     }
 

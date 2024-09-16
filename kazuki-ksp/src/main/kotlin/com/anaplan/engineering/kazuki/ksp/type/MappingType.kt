@@ -1,10 +1,8 @@
 package com.anaplan.engineering.kazuki.ksp.type
 
 import com.anaplan.engineering.kazuki.core.*
-import com.anaplan.engineering.kazuki.core.internal._KInjectiveMapping
-import com.anaplan.engineering.kazuki.core.internal._KMapping
-import com.anaplan.engineering.kazuki.core.internal._KRelation
-import com.anaplan.engineering.kazuki.core.internal._KSet
+import com.anaplan.engineering.kazuki.core.internal.*
+import com.anaplan.engineering.kazuki.ksp.InvalidInternalStateType
 import com.anaplan.engineering.kazuki.ksp.InbuiltNames
 import com.anaplan.engineering.kazuki.ksp.resolveAncestorTypeParameterNames
 import com.anaplan.engineering.kazuki.ksp.type.property.PropertyProcessor
@@ -99,15 +97,17 @@ private fun TypeSpec.Builder.addMappingType(
         addModifiers(KModifier.PRIVATE)
         addSuperinterface(interfaceTypeName)
         val mappingClass = if (injective) _KInjectiveMapping::class else _KMapping::class
-        addSuperinterfaces(listOf(
-            mappingClass.asClassName().parameterizedBy(domainTypeName, rangeTypeName, interfaceTypeName),
-            _KSet::class.asClassName().parameterizedBy(tupleType, interfaceTypeName)
-        ))
+        addSuperinterfaces(
+            listOf(
+                mappingClass.asClassName().parameterizedBy(domainTypeName, rangeTypeName, interfaceTypeName),
+                _KSet::class.asClassName().parameterizedBy(tupleType, interfaceTypeName)
+            )
+        )
         addSuperclassConstructorParameter(baseMapPropertyName)
         primaryConstructor(
             FunSpec.constructorBuilder().addParameter(baseMapPropertyName, mapType).addParameter(
-                    ParameterSpec.builder(enforceInvariantParameterName, Boolean::class).defaultValue("true").build()
-                ).build()
+                ParameterSpec.builder(enforceInvariantParameterName, Boolean::class).defaultValue("true").build()
+            ).build()
         )
         addProperty(
             PropertySpec.builder(baseMapPropertyName, mapType, KModifier.OVERRIDE).initializer(baseMapPropertyName)
@@ -154,17 +154,27 @@ private fun TypeSpec.Builder.addMappingType(
                 PropertySpec.builder(
                     "inverse", Mapping::class.asTypeName().parameterizedBy(rangeTypeName, domainTypeName)
                 ).addModifiers(KModifier.OVERRIDE).delegate(
-                        CodeBlock.builder().apply {
-                            beginControlFlow("lazy")
-                            addStatement("${InbuiltNames.corePackage}.as_Mapping($baseSetPropertyName.map { (d, r) -> mk_(r, d) })")
-                            endControlFlow()
-                        }.build()
-                    ).build()
+                    CodeBlock.builder().apply {
+                        beginControlFlow("lazy")
+                        addStatement("${InbuiltNames.corePackage}.as_Mapping($baseSetPropertyName.map { (d, r) -> mk_(r, d) })")
+                        endControlFlow()
+                    }.build()
+                ).build()
             )
         }
         // TODO -- should this be Set? -- need _KRelation to extened _KSet if so
         val comparableWith = addComparableWith(interfaceClassDcl, Relation::class.asClassName(), typeGenerationContext)
         addFunctionProviders(properties.functionProviders, true, typeGenerationContext)
+
+        addInitializerBlock(CodeBlock.builder().apply {
+            beginControlFlow(
+                "assert (%N !is %T)",
+                baseMapPropertyName,
+                _KazukiObject::class.asTypeName()
+            )
+            addStatement("%S", InvalidInternalStateType)
+            endControlFlow()
+        }.build())
 
         // N.B. it is important to have properties before init block
         val additionalInvariantParts = if (requiresNonEmpty) {
@@ -245,13 +255,13 @@ private fun TypeSpec.Builder.addMappingType(
         )
         addFunction(
             FunSpec.builder("hashCode").addModifiers(KModifier.OVERRIDE).returns(Int::class).apply {
-                    val hashPropertyName = if (comparableWith.property == null) {
-                        baseSetPropertyName
-                    } else {
-                        comparableWith.property.simpleName.getShortName()
-                    }
-                    addStatement("return %N.hashCode()", hashPropertyName)
-                }.build()
+                val hashPropertyName = if (comparableWith.property == null) {
+                    baseSetPropertyName
+                } else {
+                    comparableWith.property.simpleName.getShortName()
+                }
+                addStatement("return %N.hashCode()", hashPropertyName)
+            }.build()
         )
         addFunction(
             FunSpec.builder("isEmpty").addModifiers(KModifier.OVERRIDE).returns(Boolean::class)
@@ -259,51 +269,51 @@ private fun TypeSpec.Builder.addMappingType(
         )
         addFunction(
             FunSpec.builder("iterator").addModifiers(KModifier.OVERRIDE).returns(
-                    Iterator::class.asClassName().parameterizedBy(tupleType)
-                ).addStatement("return %N.iterator()", baseSetPropertyName).build()
+                Iterator::class.asClassName().parameterizedBy(tupleType)
+            ).addStatement("return %N.iterator()", baseSetPropertyName).build()
         )
         val equalsParameterName = "other"
         addFunction(
             FunSpec.builder("equals").addModifiers(KModifier.OVERRIDE).addParameter(
-                    ParameterSpec.builder(equalsParameterName, Any::class.asTypeName().copy(nullable = true)).build()
-                ).returns(Boolean::class).addCode(CodeBlock.builder().apply {
-                    beginControlFlow("if (this === %N)", equalsParameterName)
-                    addStatement("return true")
-                    endControlFlow()
+                ParameterSpec.builder(equalsParameterName, Any::class.asTypeName().copy(nullable = true)).build()
+            ).returns(Boolean::class).addCode(CodeBlock.builder().apply {
+                beginControlFlow("if (this === %N)", equalsParameterName)
+                addStatement("return true")
+                endControlFlow()
 
-                    beginControlFlow(
-                        "if (%N !is %T)", equalsParameterName,
-                        // TODO -- see comment above about Set
-                        _KRelation::class.asClassName().parameterizedBy(STAR, STAR, STAR)
+                beginControlFlow(
+                    "if (%N !is %T)", equalsParameterName,
+                    // TODO -- see comment above about Set
+                    _KRelation::class.asClassName().parameterizedBy(STAR, STAR, STAR)
+                )
+                addStatement("return false")
+                endControlFlow()
+
+                beginControlFlow(
+                    "if (!(%N.%N.isInstance(this) && this.%N.isInstance(%N)))",
+                    equalsParameterName,
+                    comparableWithPropertyName,
+                    comparableWithPropertyName,
+                    equalsParameterName
+                )
+                addStatement("return false")
+                endControlFlow()
+
+                if (comparableWith.property == null) {
+                    addStatement(
+                        "return %N == %N.%N", baseSetPropertyName, equalsParameterName, baseSetPropertyName
                     )
-                    addStatement("return false")
-                    endControlFlow()
-
-                    beginControlFlow(
-                        "if (!(%N.%N.isInstance(this) && this.%N.isInstance(%N)))",
+                } else {
+                    val comparablePropertyName = comparableWith.property.simpleName.getShortName()
+                    addStatement(
+                        "return this.%N == (%N as %T).%N",
+                        comparablePropertyName,
                         equalsParameterName,
-                        comparableWithPropertyName,
-                        comparableWithPropertyName,
-                        equalsParameterName
+                        comparableWith.className,
+                        comparablePropertyName
                     )
-                    addStatement("return false")
-                    endControlFlow()
-
-                    if (comparableWith.property == null) {
-                        addStatement(
-                            "return %N == %N.%N", baseSetPropertyName, equalsParameterName, baseSetPropertyName
-                        )
-                    } else {
-                        val comparablePropertyName = comparableWith.property.simpleName.getShortName()
-                        addStatement(
-                            "return this.%N == (%N as %T).%N",
-                            comparablePropertyName,
-                            equalsParameterName,
-                            comparableWith.className,
-                            comparablePropertyName
-                        )
-                    }
-                }.build()).build()
+                }
+            }.build()).build()
         )
     }.build()
     addType(implTypeSpec)

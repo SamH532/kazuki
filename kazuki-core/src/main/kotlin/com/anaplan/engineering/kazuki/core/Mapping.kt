@@ -71,7 +71,7 @@ fun <D, R> mk_InjectiveMapping1(vararg maplets: Tuple2<D, R>): InjectiveMapping1
         maplets.forEach { put(it._1, it._2) }
     })
 
-fun <D, R> is_Mapping(maplets: Iterable<Tuple2<D, R>>) = mk_Relation(maplets).let { it.dom.card == it.card }
+fun <D, R> is_Mapping(maplets: Iterable<Tuple2<D, R>>) = as_Relation(maplets).let { it.dom.card == it.card }
 
 fun <D, R> is_Mapping(vararg maplets: Tuple2<D, R>) = mk_Relation(*maplets).let { it.dom.card == it.card }
 

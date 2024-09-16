@@ -1,7 +1,9 @@
 package com.anaplan.engineering.kazuki.core
 
 import com.anaplan.engineering.kazuki.core.internal.__KRelation
+import com.anaplan.engineering.kazuki.core.internal.__KSet
 import com.anaplan.engineering.kazuki.core.internal.transformSet
+import java.util.Collections.addAll
 
 interface Relation<D, R> : Set<Tuple2<D, R>> {
 
@@ -13,7 +15,7 @@ interface Relation<D, R> : Set<Tuple2<D, R>> {
 
 fun <D, R> mk_Relation(vararg elems: Tuple2<D, R>): Relation<D, R> = __KRelation(elems.toSet())
 
-fun <D, R> mk_Relation(elems: Iterable<Tuple2<D, R>>): Relation<D, R> = __KRelation(elems.toSet())
+fun <D, R> as_Relation(elems: Iterable<Tuple2<D, R>>): Relation<D, R> = __KRelation(LinkedHashSet<Tuple2<D, R>>(elems.count()).apply { addAll(elems) })
 
 infix operator fun <D, R, T : Relation<D, R>> T.plus(t: Tuple2<D, R>) = transformSet { it.elements + mk_(t._1, t._2) }
 
