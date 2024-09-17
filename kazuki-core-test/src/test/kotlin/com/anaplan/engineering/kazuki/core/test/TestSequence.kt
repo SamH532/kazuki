@@ -310,8 +310,4 @@ class TestSequence(
         assertEquals(mk_Seq<Int>(),mk_Seq<Int>().filter{ e -> e in mk_Seq(1) })
     }
 
-    @Test
-    fun minus() {
-            // Not sure what this function intends to do, so I can't write a test
-    }
 }
