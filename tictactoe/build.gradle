@@ -9,3 +9,6 @@ dependencies {
     testImplementation 'org.jetbrains.kotlin:kotlin-test-junit'
 }
 
+test {
+    enableAssertions = true
+}

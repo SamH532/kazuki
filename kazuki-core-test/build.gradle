@@ -21,3 +21,7 @@ sourceSets {
 ksp {
     arg("com.anaplan.engineering.kazuki.compile.debug.level", "INFO")
 }
+
+test {
+    enableAssertions = true
+}

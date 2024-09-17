@@ -2,6 +2,8 @@ package com.anaplan.engineering.kazuki.ksp.type
 
 import com.anaplan.engineering.kazuki.core.*
 import com.anaplan.engineering.kazuki.core.internal._KSequence
+import com.anaplan.engineering.kazuki.core.internal._KazukiObject
+import com.anaplan.engineering.kazuki.ksp.InvalidInternalStateType
 import com.anaplan.engineering.kazuki.ksp.InbuiltNames
 import com.anaplan.engineering.kazuki.ksp.lazy
 import com.anaplan.engineering.kazuki.ksp.resolveTypeNameOfAncestorGenericParameter
@@ -29,7 +31,7 @@ internal fun TypeSpec.Builder.addSeq1Type(
     interfaceClassDcl: KSClassDeclaration,
     makeable: Boolean,
     typeGenerationContext: TypeGenerationContext,
-) = 
+) =
     if (makeable) {
         addSequenceType(interfaceClassDcl, typeGenerationContext, true)
     } else {
@@ -48,6 +50,11 @@ private fun TypeSpec.Builder.addSequenceType(
         interfaceClassDcl.toClassName()
     } else {
         interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments)
+    }
+    val erasedInterfaceTypeName = if (interfaceTypeArguments.isEmpty()) {
+        interfaceClassDcl.toClassName()
+    } else {
+        interfaceClassDcl.toClassName().parameterizedBy(interfaceTypeArguments.map { STAR })
     }
     val properties = PropertyProcessor(interfaceClassDcl, typeGenerationContext).process()
     val superInterface = if (requiresNonEmpty) Sequence1::class else Sequence::class
@@ -116,6 +123,15 @@ private fun TypeSpec.Builder.addSequenceType(
         } else {
             emptyList()
         }
+        addInitializerBlock(CodeBlock.builder().apply {
+            beginControlFlow(
+                "assert (%N !is %T)",
+                elementsPropertyName,
+                _KazukiObject::class.asTypeName()
+            )
+            addStatement("%S", InvalidInternalStateType)
+            endControlFlow()
+        }.build())
         addInvariantFrom(
             interfaceClassDcl,
             typeGenerationContext,
@@ -138,7 +154,11 @@ private fun TypeSpec.Builder.addSequenceType(
                 returns(elementTypeName)
                 addCode(CodeBlock.builder().apply {
                     beginControlFlow("if (%N < 1 || %N > %N)", indexParameterName, indexParameterName, lenPropertyName)
-                    addStatement("throw %T(%P)", PreconditionFailure::class, "Index \$$indexParameterName is not valid for sequence of length \$$lenPropertyName")
+                    addStatement(
+                        "throw %T(%P)",
+                        PreconditionFailure::class,
+                        "Index \$$indexParameterName is not valid for sequence of length \$$lenPropertyName"
+                    )
                     endControlFlow()
                     addStatement("return %N.get(%N - 1)", elementsPropertyName, indexParameterName)
                 }.build())
@@ -227,7 +247,7 @@ private fun TypeSpec.Builder.addSequenceType(
                             "return this.%N == (%N as %T).%N",
                             comparablePropertyName,
                             equalsParameterName,
-                            comparableWith.className,
+                            comparableWith.comparableTypeLimitTypeName,
                             comparablePropertyName
                         )
                     }
@@ -269,8 +289,12 @@ private fun TypeSpec.Builder.addSequenceType(
             addParameter(elementsPropertyName, superListTypeName)
             returns(Boolean::class)
             addStatement(
-                "return %N$implTypeArgs(%N, false).%N()",
+                "return (%N is %T)·|| %N$implTypeArgs(%T(%N.size).apply·{ addAll(%N) }, false ).%N()",
+                elementsPropertyName,
+                erasedInterfaceTypeName,
                 implClassName,
+                ArrayList::class.asClassName().parameterizedBy(elementTypeName),
+                elementsPropertyName,
                 elementsPropertyName,
                 validityFunctionName
             )
@@ -283,7 +307,18 @@ private fun TypeSpec.Builder.addSequenceType(
             }
             addParameter(elementsPropertyName, superListTypeName)
             returns(interfaceTypeName)
-            addStatement("return %N(%N)", "mk_$interfaceName", elementsPropertyName)
+            addCode(CodeBlock.builder().apply {
+                beginControlFlow("if (%N is %T)", elementsPropertyName, erasedInterfaceTypeName)
+                addStatement("return %N as %T", elementsPropertyName, interfaceTypeName)
+                nextControlFlow("else")
+                addStatement("return %N(%T(%N.size).apply·{ addAll(%N) })",
+                    "mk_$interfaceName",
+                    ArrayList::class.asClassName().parameterizedBy(elementTypeName),
+                    elementsPropertyName,
+                    elementsPropertyName
+                )
+                endControlFlow()
+            }.build())
         }.build()
     )
 }

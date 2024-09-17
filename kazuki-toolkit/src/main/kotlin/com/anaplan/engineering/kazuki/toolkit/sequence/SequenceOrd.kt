@@ -34,8 +34,6 @@ object SequenceOrd {
                 },
                 pre = { _, s -> ascending(s) },
                 post = { t, s, result ->
-                    println(result)
-                    println(mk_Seq(t) cat s)
                     ascending(result) && SequenceFunctions<T>().permutation(mk_Seq(t) cat s, result)
                 },
                 measure = { _, s -> s.len }

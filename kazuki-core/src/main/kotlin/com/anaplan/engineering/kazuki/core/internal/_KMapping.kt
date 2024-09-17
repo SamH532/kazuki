@@ -40,7 +40,14 @@ interface _KInjectiveMapping<D, R, M : InjectiveMapping<D, R>> : InjectiveMappin
 }
 
 // TODO - generate impls for consistency
-internal class __KMapping<D, R>(override val baseMap: Map<D, R>) : _KMapping<D, R, Mapping<D, R>>, _KSet<Tuple2<D, R>, Mapping<D, R>> {
+internal class __KMapping<D, R>(override val baseMap: Map<D, R>) : _KMapping<D, R, Mapping<D, R>>,
+    _KSet<Tuple2<D, R>, Mapping<D, R>> {
+
+    init {
+        assert(baseMap !is _KazukiObject) {
+            "Internal state should not be a Kazuki-generated object"
+        }
+    }
 
     override fun construct(elements: Set<Tuple2<D, R>>) = super.construct(elements)
 
@@ -81,8 +88,14 @@ internal class __KMapping<D, R>(override val baseMap: Map<D, R>) : _KMapping<D, 
 internal class __KInjectiveMapping<D, R>(override val baseMap: Map<D, R>) :
     InjectiveMapping<D, R>,
     _KInjectiveMapping<D, R, InjectiveMapping<D, R>>,
-    _KSet<Tuple2<D, R>, InjectiveMapping<D, R>>
-{
+    _KSet<Tuple2<D, R>, InjectiveMapping<D, R>> {
+
+    init {
+        assert(baseMap !is _KazukiObject) {
+            "Internal state should not be a Kazuki-generated object"
+        }
+    }
+
     override fun construct(elements: Set<Tuple2<D, R>>) = super.construct(elements)
 
     override val elements: Set<Tuple2<D, R>> get() = super.elements
@@ -131,8 +144,13 @@ internal class __KInjectiveMapping<D, R>(override val baseMap: Map<D, R>) :
 internal class __KInjectiveMapping1<D, R>(override val baseMap: Map<D, R>) :
     InjectiveMapping1<D, R>,
     _KInjectiveMapping<D, R, InjectiveMapping1<D, R>>,
-    _KSet<Tuple2<D, R>, InjectiveMapping1<D, R>>
-{
+    _KSet<Tuple2<D, R>, InjectiveMapping1<D, R>> {
+
+    init {
+        assert(baseMap !is _KazukiObject) {
+            "Internal state should not be a Kazuki-generated object"
+        }
+    }
 
     override fun construct(elements: Set<Tuple2<D, R>>) = super.construct(elements)
 
@@ -185,6 +203,12 @@ internal class __KInjectiveMapping1<D, R>(override val baseMap: Map<D, R>) :
 internal class __KMapping1<D, R>(override val baseMap: Map<D, R>) : Mapping1<D, R>,
     _KMapping<D, R, Mapping1<D, R>>, _KSet<Tuple2<D, R>, Mapping1<D, R>> {
 
+    init {
+        assert(baseMap !is _KazukiObject) {
+            "Internal state should not be a Kazuki-generated object"
+        }
+    }
+
     override fun construct(elements: Set<Tuple2<D, R>>) = super.construct(elements)
 
     override val elements: Set<Tuple2<D, R>> get() = super.elements
@@ -233,7 +257,7 @@ internal class __KMapping1<D, R>(override val baseMap: Map<D, R>) : Mapping1<D, 
 internal fun <D, R, T : Mapping<D, R>> T.transformMapping(fn: (_KMapping<D, R, T>) -> Map<D, R>): T {
     val kMap = this as? _KMapping<D, R, T> ?: throw PreconditionFailure("Mapping was implemented outside Kazuki")
     val base = fn(kMap)
-    if (kMap is Mapping1<*,*> && base.isEmpty()) {
+    if (kMap is Mapping1<*, *> && base.isEmpty()) {
         throw PreconditionFailure("Cannot create Mapping1 without elements")
     }
     return kMap.construct(base)

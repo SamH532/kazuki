@@ -142,7 +142,11 @@ fun FileSpec.Builder.addNAryTupleInternal(nary: Int) {
             PropertySpec.builder(comparableWithPropertyName, comparableWithTypeName, KModifier.OPEN, KModifier.OVERRIDE)
                 .initializer(CodeBlock.of("$publicInterfaceName::class")).build()
         )
-        // TODO -- toString
+        addFunction(FunSpec.builder("toString").apply {
+            addModifiers(KModifier.OVERRIDE)
+            returns(String::class)
+            addStatement("return %P", "(${(1..nary).joinToString(", ") { "\$_$it" }})")
+        }.build())
     }.build())
 
 }

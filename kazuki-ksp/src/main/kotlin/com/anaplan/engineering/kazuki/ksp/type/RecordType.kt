@@ -1,5 +1,8 @@
+@file:OptIn(KspExperimental::class)
+
 package com.anaplan.engineering.kazuki.ksp.type
 
+import com.anaplan.engineering.kazuki.core.ComparableProperty
 import com.anaplan.engineering.kazuki.core.PreconditionFailure
 import com.anaplan.engineering.kazuki.core.internal._Record
 import com.anaplan.engineering.kazuki.ksp.InbuiltNames.coreInternalPackage
@@ -8,6 +11,8 @@ import com.anaplan.engineering.kazuki.ksp.findUnusedGenericName
 import com.anaplan.engineering.kazuki.ksp.superModules
 import com.anaplan.engineering.kazuki.ksp.type.property.PropertyProcessor
 import com.anaplan.engineering.kazuki.ksp.type.property.addFunctionProviders
+import com.google.devtools.ksp.KspExperimental
+import com.google.devtools.ksp.getAnnotationsByType
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.squareup.kotlinpoet.*
@@ -125,14 +130,21 @@ internal fun TypeSpec.Builder.addRecordType(
             FunSpec.builder("toString").addModifiers(KModifier.OVERRIDE)
                 .returns(String::class).addCode(CodeBlock.builder().apply {
                     beginControlFlow("val sb = %T().apply", StringBuilder::class)
-                    addStatement("append(\"%N(\")", interfaceType.declaration.simpleName.asString())
-                    tupleComponents.dropLast(1).forEach {
-                        val propertyName = it.name
-                        addStatement("append(\"%N=\$%N, \")", propertyName, propertyName)
+                    addStatement("append(\"%N\")", interfaceType.declaration.simpleName.asString())
+                    val useComparableForOutput =
+                        comparableWith.property?.getAnnotationsByType(ComparableProperty::class)?.single()?.useForOutput
+                    if (useComparableForOutput == true) {
+                        addStatement("append(%P)", "\$${comparableWith.property.simpleName.asString()}")
+                    } else {
+                        addStatement("append(%S)", "(")
+                        tupleComponents.dropLast(1).forEach {
+                            val propertyName = it.name
+                            addStatement("append(%P)", "$propertyName=\$$propertyName, ")
+                        }
+                        val lastPropertyName = tupleComponents.last().name
+                        addStatement("append(%P)", "$lastPropertyName=\$$lastPropertyName")
+                        addStatement("append(%S)", ")")
                     }
-                    val lastPropertyName = tupleComponents.last().name
-                    addStatement("append(\"%N=\$%N\")", lastPropertyName, lastPropertyName)
-                    addStatement("append(\")\")")
                     endControlFlow()
                     addStatement("return sb.toString()")
                 }.build()).build()
@@ -193,7 +205,7 @@ internal fun TypeSpec.Builder.addRecordType(
                             "return this.%N == (%N as %T).%N",
                             comparablePropertyName,
                             otherParameterName,
-                            comparableWith.className,
+                            comparableWith.comparableTypeLimitTypeName,
                             comparablePropertyName
                         )
                     }

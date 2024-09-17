@@ -25,6 +25,12 @@ internal class __KRelation<D, R>(override val elements: Set<Tuple2<D, R>>) :
     Set<Tuple2<D, R>> by elements
 {
 
+    init {
+        assert(elements !is _KazukiObject) {
+            "Internal state should not be a Kazuki-generated object"
+        }
+    }
+
     override fun construct(elements: Set<Tuple2<D, R>>) = __KRelation(elements)
 
     override val comparableWith = Set::class

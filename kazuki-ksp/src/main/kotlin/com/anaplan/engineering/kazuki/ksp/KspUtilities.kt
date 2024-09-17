@@ -64,12 +64,13 @@ class AncestorTypeParameters(
     private val typeParameters: List<KSTypeParameter>,
     private val indexToTypeName: Map<Int, TypeName>
 ) {
-
     private val nameToTypeName by lazy {
         typeParameters.mapIndexed { i, p ->
             p.name.asString() to indexToTypeName[i]
         }.toMap()
     }
+
+    val typeNames by lazy { typeParameters.indices.map { getTypeName(it) }}
 
     fun getTypeName(index: Int) = indexToTypeName[index]!!
 
