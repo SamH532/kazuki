@@ -24,7 +24,9 @@ annotation class Invariant
  */
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class ComparableProperty
+annotation class ComparableProperty(
+    val useForOutput: Boolean = false
+)
 
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)

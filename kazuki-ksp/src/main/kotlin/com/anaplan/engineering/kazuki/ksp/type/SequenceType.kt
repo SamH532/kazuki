@@ -247,7 +247,7 @@ private fun TypeSpec.Builder.addSequenceType(
                             "return this.%N == (%N as %T).%N",
                             comparablePropertyName,
                             equalsParameterName,
-                            comparableWith.className,
+                            comparableWith.comparableTypeLimitTypeName,
                             comparablePropertyName
                         )
                     }

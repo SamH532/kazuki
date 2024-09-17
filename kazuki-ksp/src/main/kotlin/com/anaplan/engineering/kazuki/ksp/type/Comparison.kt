@@ -2,6 +2,7 @@ package com.anaplan.engineering.kazuki.ksp.type
 
 import com.anaplan.engineering.kazuki.core.ComparableProperty
 import com.anaplan.engineering.kazuki.core.ComparableTypeLimit
+import com.anaplan.engineering.kazuki.ksp.resolveAncestorTypeParameterNames
 import com.anaplan.engineering.kazuki.ksp.superModules
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.isAnnotationPresent
@@ -10,6 +11,7 @@ import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import kotlin.reflect.KClass
 
 internal const val comparableWithPropertyName = "comparableWith"
@@ -17,7 +19,8 @@ private val comparableWithTypeName = KClass::class.asTypeName().parameterizedBy(
 
 internal data class ComparableWith(
     val property: KSPropertyDeclaration?,
-    val className: ClassName,
+    val comparableTypeLimitClassName: ClassName,
+    val comparableTypeLimitTypeName: TypeName,
 )
 
 internal fun TypeSpec.Builder.addComparableWith(
@@ -26,17 +29,26 @@ internal fun TypeSpec.Builder.addComparableWith(
     typeGenerationContext: TypeGenerationContext
 ): ComparableWith {
     val comparableProperty = getComparableProperty(classDcl, typeGenerationContext)
-    val comparableWithClass = if (comparableProperty == null) {
-        getExplicitComparableTypeLimit(classDcl, typeGenerationContext)?.toClassName() ?: default
+    val comparableTypeLimit = if (comparableProperty == null) {
+        getExplicitComparableTypeLimit(classDcl, typeGenerationContext)
     } else {
-        val comparableClassDcl = comparableProperty.parentDeclaration as KSClassDeclaration
-        comparableClassDcl.toClassName()
+        comparableProperty.parentDeclaration as KSClassDeclaration
+    }
+    val comparableTypeLimitClassName = comparableTypeLimit?.toClassName() ?: default
+    val comparableTypeLimitTypeName = if (comparableTypeLimit == null || comparableTypeLimit.typeParameters.isEmpty()) {
+        comparableTypeLimitClassName
+    } else if (comparableTypeLimit == classDcl) {
+        val interfaceTypeArguments = comparableTypeLimit.typeParameters.map { it.toTypeVariableName() }
+        comparableTypeLimit.toClassName().parameterizedBy(interfaceTypeArguments)
+    } else {
+        val params = classDcl.resolveAncestorTypeParameterNames(comparableTypeLimit.qualifiedName!!.asString())
+        comparableTypeLimit.toClassName().parameterizedBy(params.typeNames)
     }
     addProperty(
         PropertySpec.builder(comparableWithPropertyName, comparableWithTypeName, KModifier.OVERRIDE)
-            .initializer(CodeBlock.of("$comparableWithClass::class")).build()
+            .initializer(CodeBlock.of("$comparableTypeLimitClassName::class")).build()
     )
-    return ComparableWith(comparableProperty, comparableWithClass)
+    return ComparableWith(comparableProperty, comparableTypeLimitClassName, comparableTypeLimitTypeName)
 }
 
 @OptIn(KspExperimental::class)

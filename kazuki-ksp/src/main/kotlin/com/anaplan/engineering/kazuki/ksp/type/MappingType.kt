@@ -309,7 +309,7 @@ private fun TypeSpec.Builder.addMappingType(
                         "return this.%N == (%N as %T).%N",
                         comparablePropertyName,
                         equalsParameterName,
-                        comparableWith.className,
+                        comparableWith.comparableTypeLimitTypeName,
                         comparablePropertyName
                     )
                 }
