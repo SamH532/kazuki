@@ -303,11 +303,11 @@ class TestSequence(
 
     @Test
     fun filter() {
-        assertEquals(mk_Seq(1,2,3),mk_Seq(-3,-2,-1,0,1,2,3).filter{ e -> e > 0 })
-        assertEquals(mk_Seq(-3,-2,-1,0,1,2,3),mk_Seq(-3,-2,-1,0,1,2,3).filter{ e -> e > -4 })
-        assertEquals(mk_Seq(-3,-2,-1),mk_Seq(-3,-2,-1,0,1,2,3).filter{ e -> e < 0 })
-        assertEquals(mk_Seq(),mk_Seq(-3,-2,-1,0,1,2,3).filter{ e -> e > 3 })
-        assertEquals(mk_Seq<Int>(),mk_Seq<Int>().filter{ e -> e in mk_Seq(1) })
+        assertEquals(mk_Seq(1, 2, 3), mk_Seq(-3, -2, -1, 0, 1, 2, 3).filter { e -> e > 0 })
+        assertEquals(mk_Seq(-3, -2, -1, 0, 1, 2, 3), mk_Seq(-3, -2, -1, 0, 1, 2, 3).filter { e -> e > -4 })
+        assertEquals(mk_Seq(-3, -2, -1), mk_Seq(-3, -2, -1, 0, 1, 2, 3).filter { e -> e < 0 })
+        assertEquals(mk_Seq(), mk_Seq(-3, -2, -1, 0, 1, 2, 3).filter { e -> e > 3 })
+        assertEquals(mk_Seq<Int>(), mk_Seq<Int>().filter { e -> e in mk_Seq(1) })
     }
 
 }

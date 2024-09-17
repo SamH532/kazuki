@@ -60,10 +60,10 @@ class TestSet {
 
     @Test
     fun dunion() {
-        assertEquals(mk_Set<Int>(), dunion(mk_Set<Int>()))
+        assertEquals(mk_Set(), dunion(mk_Set<Int>()))
         assertEquals(mk_Set(1, 2, 3), dunion(mk_Set(mk_Set(1, 2), mk_Set(3))))
         assertEquals(mk_Set(1, 2, 3), dunion(mk_Set(1, 2, 3)))
-        assertEquals(mk_Set<Int>(), dunion(mk_Set<Int>()))
+        assertEquals(mk_Set(1), dunion(mk_Set(), mk_Set(1)))
         assertEquals(mk_Set(mk_Set(1), 2, 3), dunion(mk_Set(mk_Set(1), 2), mk_Set(3)))
         assertEquals(mk_Set(mk_Set(1, 2), 3), dunion(mk_Set(mk_Set(1, 2), 3)))
     }
@@ -71,17 +71,17 @@ class TestSet {
     @Test
     fun plus() {
         assertEquals(mk_Set(1), mk_Set<Int>().plus(1))
-        assertEquals(mk_Set(1), mk_Set(1).plus(mk_Set<Int>()))
-        assertEquals(mk_Set(1, 2), mk_Set<Int>(1).plus(mk_Set(1, 2)))
-        assertEquals(mk_Set(1, 2), mk_Set<Int>(1).plus(2))
+        assertEquals(mk_Set(1), mk_Set(1).plus(mk_Set()))
+        assertEquals(mk_Set(1, 2), mk_Set(1).plus(mk_Set(1, 2)))
+        assertEquals(mk_Set(1, 2), mk_Set(1).plus(2))
     }
 
     @Test
     fun minus() {
-        assertEquals(mk_Set<Int>(), mk_Set<Int>().minus(1))
-        assertEquals(mk_Set<Int>(), mk_Set(1).minus(1))
-        assertEquals(mk_Set<Int>(2), mk_Set(1, 2).minus(mk_Set(1)))
-        assertEquals(mk_Set(1), mk_Set(1).minus(mk_Set<Int>()))
-        assertEquals(mk_Set<Int>(), mk_Set<Int>().minus(mk_Set<Int>()))
+        assertEquals(mk_Set(), mk_Set<Int>().minus(1))
+        assertEquals(mk_Set(), mk_Set(1).minus(1))
+        assertEquals(mk_Set(2), mk_Set(1, 2).minus(mk_Set(1)))
+        assertEquals(mk_Set(1), mk_Set(1).minus(mk_Set()))
+        assertEquals(mk_Set(), mk_Set<Int>().minus(mk_Set()))
     }
 }
