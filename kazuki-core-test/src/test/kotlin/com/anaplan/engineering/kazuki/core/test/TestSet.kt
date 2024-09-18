@@ -32,10 +32,6 @@ class TestSet(
     private fun empty() = create<Any>()
     private fun <T> create(vararg m: T) = creator.invoke(m.toList())
 
-    // TODO Add in a mk_SetExtension() for the testing that might have new invariants
-    // TODO Figure out how types should work here - Sequences was just integers but sets are more complicated
-    // TODO Test for precondition failures -> put as elses to the ifs?
-
     @Test
     fun inter() {
         if (allowsEmpty) {
