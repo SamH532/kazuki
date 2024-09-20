@@ -29,15 +29,14 @@ class TestSet(
             )
     }
 
-    private fun empty() = create<Any>()
-    private fun <T> create(vararg m: T) = creator.invoke(m.toList())
+    private fun create(vararg m: Any) = creator.invoke(m.toList())
 
     @Test
     fun inter() {
         if (allowsEmpty) {
-            assertEquals(empty(), empty() inter empty())
-            assertEquals(empty(), create(1, 2, 3) inter empty())
-            assertEquals(empty(), create(1) inter create(2))
+            assertEquals(create(), create() inter create())
+            assertEquals(create(), create(1, 2, 3) inter create())
+            assertEquals(create(), create(1) inter create(2))
         } else {
             // inter creates a set of the same type as the first input
             causesPreconditionFailure { create(1) inter create(2) }
@@ -50,7 +49,7 @@ class TestSet(
     @Test
     fun union() {
         if (allowsEmpty) {
-            assertEquals(empty(), empty() union empty())
+            assertEquals(create(), create() union create())
         }
         assertEquals(create(1, 2, 3), create(1, 2, 3) union create(2))
         assertEquals(create(1, 2, 3, 4), create(1, 2, 3) union create(2, 4))
@@ -62,8 +61,10 @@ class TestSet(
     @Test
     fun subset() {
         if (allowsEmpty) {
-            assertEquals(true, empty() subset empty())
+            assertEquals(true, create() subset create())
         }
+        assertEquals(false, create(2) subset create(create(1, 2, 3), create(2), mk_Set<Int>()))
+        assertEquals(true, create(create(3)) subset create(create(1, 2, 3), create(3), mk_Set<Int>()))
         assertEquals(true, mk_Set<Int>() subset create(1, 2, 3))
         assertEquals(false, create(1) subset mk_Set())
         assertEquals(true, create(1) subset create(1, 2, 3))
@@ -73,7 +74,7 @@ class TestSet(
     @Test
     fun cartesianProduct() {
         if (allowsEmpty) {
-            assertEquals(empty(), create(1, 2, 3) x empty())
+            assertEquals(create(), create(1, 2, 3) x create())
         }
         assertEquals(create(mk_(1, 2), mk_(1, 3)), create(1) x create(2, 3))
         assertEquals(create(mk_(3, 1), mk_(4, 1), mk_(3, 2), mk_(4, 2)), create(3, 4) x create(2, 1))
@@ -83,7 +84,7 @@ class TestSet(
     @Test
     fun arbitrary() {
         if (allowsEmpty) {
-            causesPreconditionFailure { empty().arbitrary() }
+            causesPreconditionFailure { create().arbitrary() }
         }
         assertEquals(true, create(1, 2, 3).arbitrary() in create(1, 2, 3))
         assertEquals(false, create(1, 2, 3).arbitrary() in create(4, 5, 6))
@@ -92,7 +93,7 @@ class TestSet(
     @Test
     fun card() {
         if (allowsEmpty) {
-            assertEquals(0, empty().card)
+            assertEquals(0, create().card)
         }
         assertEquals(3, create(1, 2, 3).card)
         assertEquals(3, create(create(1, 2), 2, 3).card)
@@ -101,8 +102,8 @@ class TestSet(
     @Test
     fun dunion() {
         if (allowsEmpty) {
-            assertEquals(empty(), dunion(empty()))
-            assertEquals(create(1), dunion(empty(), create(1)))
+            assertEquals(create(), dunion(create()))
+            assertEquals(create(1), dunion(create(), create(1)))
         }
         assertEquals(create(1, 2, 3), dunion(mk_Set1(create(1, 2), create(3))))
         assertEquals(create(1, 2, 3), dunion(create(1, 2, 3)))
@@ -111,25 +112,42 @@ class TestSet(
     }
 
     @Test
-    fun plus() {
+    fun plusItem() {
         if (allowsEmpty) {
-            assertEquals(create(1), empty().plus(1))
-            assertEquals(create(1), create(1).plus(empty()))
+            assertEquals(create(1), create() + (1))
         }
-        assertEquals(create(1, 2), create(1).plus(create(1, 2)))
-        assertEquals(create(1, 2), create(1).plus(2))
+        assertEquals(create(1, 2), create(1) + 2)
+        assertEquals(create(1, 2), create(1, 2) + 2)
     }
 
     @Test
-    fun minus() {
+    fun plusSet() {
         if (allowsEmpty) {
-            assertEquals(empty(), empty().minus(1))
-            assertEquals(empty(), create(1).minus(1))
-            assertEquals(empty(), empty().minus(empty()))
-        } else {
-            causesPreconditionFailure { create(1).minus(1) }
+            assertEquals(create(1), create(1) + create())
         }
-        assertEquals(create(2), create(1, 2).minus(create(1)))
-        assertEquals(create(1), create(1).minus(mk_Set()))
+        assertEquals(create(1, 2), create(1) + create(1, 2))
+    }
+
+    @Test
+    fun minusItem() {
+        if (allowsEmpty) {
+            assertEquals(create(), create() - 1)
+            assertEquals(create(), create(1) - 1)
+        } else {
+            causesPreconditionFailure { create(1) - 1 }
+        }
+        assertEquals(create(2), create(1, 2) - create(1))
+        assertEquals(create(1, 2), create(1, 2) - 3)
+    }
+
+    @Test
+    fun minusSet() {
+        if (allowsEmpty) {
+            assertEquals(create(), create() - create())
+            assertEquals(create(), create(1, 2) - create(1, 2, 3))
+        }
+        assertEquals(create(1), create(1) - mk_Set())
+        assertEquals(create(1), create(1, 2, 3) - create(2, 3))
+        assertEquals(create(1, 2), create(1, 2, 3) - create(3, 4))
     }
 }
