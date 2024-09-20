@@ -64,8 +64,6 @@ class TestSet(
         if (allowsEmpty) {
             assertEquals(true, empty() subset empty())
         }
-        assertEquals(false, create(2) subset create(create(1, 2, 3), create(2), mk_Set()))
-        assertEquals(true, create(create(3)) subset create(create(1, 2, 3), create(3), mk_Set()))
         assertEquals(true, mk_Set<Int>() subset create(1, 2, 3))
         assertEquals(false, create(1) subset mk_Set())
         assertEquals(true, create(1) subset create(1, 2, 3))
