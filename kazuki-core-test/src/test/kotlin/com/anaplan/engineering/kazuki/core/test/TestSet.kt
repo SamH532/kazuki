@@ -114,7 +114,7 @@ class TestSet(
     @Test
     fun plusItem() {
         if (allowsEmpty) {
-            assertEquals(create(1), create() + (1))
+            assertEquals(create(1), create() + 1)
         }
         assertEquals(create(1, 2), create(1) + 2)
         assertEquals(create(1, 2), create(1, 2) + 2)
@@ -136,7 +136,7 @@ class TestSet(
         } else {
             causesPreconditionFailure { create(1) - 1 }
         }
-        assertEquals(create(2), create(1, 2) - create(1))
+        assertEquals(create(2), create(1, 2) - 1)
         assertEquals(create(1, 2), create(1, 2) - 3)
     }
 
@@ -145,6 +145,8 @@ class TestSet(
         if (allowsEmpty) {
             assertEquals(create(), create() - create())
             assertEquals(create(), create(1, 2) - create(1, 2, 3))
+        } else {
+            causesPreconditionFailure { create(1) - create(1, 2) }
         }
         assertEquals(create(1), create(1) - mk_Set())
         assertEquals(create(1), create(1, 2, 3) - create(2, 3))
