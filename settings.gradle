@@ -6,6 +6,7 @@ include(
         "kazuki-toolkit",
         "kazuki-toolkit-examples",
         "tictactoe",
+        "gameoflife"
 )
 includeBuild("kazuki-generation")
 includeBuild("build-conventions")

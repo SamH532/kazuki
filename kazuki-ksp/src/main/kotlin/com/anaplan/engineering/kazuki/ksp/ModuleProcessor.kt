@@ -85,6 +85,8 @@ internal class ModuleProcessor(
 
         val seq1Types = types[KazukiType.Sequence1Type] ?: emptyList()
         val seqTypes = types[KazukiType.SequenceType] ?: emptyList()
+        val set1Types = types[KazukiType.Set1Type] ?: emptyList()
+        val setTypes = types[KazukiType.SetType] ?: emptyList()
         val quoteTypes = types[KazukiType.QuoteType] ?: emptyList()
         val recordTypes = types[KazukiType.RecordType] ?: emptyList()
 
@@ -92,6 +94,8 @@ internal class ModuleProcessor(
         val moduleTypeSpec = TypeSpec.objectBuilder(moduleClassName).apply {
             seq1Types.forEach { addSeq1Type(it, true, typeGenerationContext) }
             seqTypes.forEach { addSeqType(it, true, typeGenerationContext) }
+            setTypes.forEach { addSetType(it, true, typeGenerationContext) }
+            set1Types.forEach { addSet1Type(it, true, typeGenerationContext) }
             quoteTypes.forEach { processQuoteType(it, true, typeGenerationContext) }
             recordTypes.forEach { addRecordType(it, true, typeGenerationContext) }
         }.build()
