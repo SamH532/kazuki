@@ -75,7 +75,7 @@ object Conway {
                     generations(n - 1, newP)
                 }
             },
-            measure = { n, _ -> n },
+            measure = { n, _ -> n }
         )
     }
 }
