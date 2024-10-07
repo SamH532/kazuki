@@ -16,6 +16,9 @@ object ISO8601 {
 
     // TODO Make the functions methods on types:
     //  e.g. instead of durToMin(), use a function dur.toMin()
+    //  Do the same for nats: e.g. durFromSec(<nat>) goes to <nat>.secToDur()
+    //  Look at refactoring (under edit) to update these
+
     //  Look at kspec for examples of this
 
     // TODO Use nat instead of longNat
@@ -97,12 +100,6 @@ object ISO8601 {
             }
     }
 
-    enum class PlusOrMinus {
-        Plus,
-        Minus,
-        None
-    }
-
     interface DTG {
         val date: Date
         val time: Time
@@ -138,9 +135,30 @@ object ISO8601 {
         fun beginAfterEnd() = begins.dur <= ends.dur
     }
 
+    enum class PlusOrMinus {
+        Plus,
+        Minus,
+        None
+    }
+
     interface Duration {
         val dur: longNat
+
+        @FunctionProvider(DurationFunctions::class)
+        val functions: DurationFunctions
     }
+
+    open class DurationFunctions(private val d: Duration) {
+        val toMillis = function<longNat>(
+            command = { d.dur },
+            post = { result -> durFromMillis(result) == d }
+        )
+        
+    }
+
+
+    // TODO Make interface
+//    interface DayOfWeek {}
 
     private const val MILLIS_PER_SECOND: nat = 1000
     private const val SECONDS_PER_MINUTE: nat = 60
@@ -167,7 +185,6 @@ object ISO8601 {
     )
 
     private const val FIRST_YEAR: nat = 0
-
     private const val LAST_YEAR: nat = 9999
 
     private val DAYS_PER_YEAR: nat1 by lazy { daysInYear(1) }
@@ -436,7 +453,7 @@ object ISO8601 {
                 }
             },
             // TODO Confirm why this was commented out in VDM
-            // Test year above and below instead of like this
+            // TODO Test year above and below instead of like this
 //            post = { d, yr, result ->
 //                (set(FIRST_YEAR..LAST_YEAR,
 //                    filter = { durUpToYear(yr + it).dur <= d.dur }) { it }).max().toLong() == result
@@ -798,7 +815,7 @@ object ISO8601 {
     val formatDuration: (Duration) -> String = function(
         command = { d: Duration ->
             val numDays = durToDays(d)
-            val inputTime = durToTime(durModDays(d))
+            val timeOfDay = durToTime(durModDays(d))
             val item: (nat, Char) -> String = function(
                 command = { n: nat, c: Char ->
                     if (n == 0) {
@@ -815,11 +832,12 @@ object ISO8601 {
             )
 
             val date = item(numDays.toInt(), 'D')
-            val time = item(inputTime.hour, 'H') + item(inputTime.minute, 'M') + if (inputTime.millisecond == 0) {
-                item(inputTime.second, 'S')
-            } else {
-                itemSec(inputTime.second, inputTime.millisecond)
-            }
+            val time = item(timeOfDay.hour, 'H') + item(timeOfDay.minute, 'M') +
+                    if (timeOfDay.millisecond == 0) {
+                        item(timeOfDay.second, 'S')
+                    } else {
+                        itemSec(timeOfDay.second, timeOfDay.millisecond)
+                    }
             if (date == "" && time == "") {
                 "PT0S"
             } else {

@@ -540,7 +540,7 @@ class ISO8601Test {
         )
     }
 
-    // TODO See if AddMonths and SubtractMonths should exist
+    // TODO AddMonths and SubtractMonths should exist
 
     @Test
     fun diffTest() {
@@ -1337,7 +1337,6 @@ class ISO8601Test {
     fun formatTimeTest() {
         assertEquals("10:07:14", formatTime(mk_Time(10, 7, 14, 0)))
         assertEquals("00:00:00", formatTime(mk_Time(0, 0, 0, 0)))
-        // TODO Check if it's ok that this differs
         assertEquals("00:00:00.050", formatTime(mk_Time(0, 0, 0, 50)))
     }
 
@@ -1397,7 +1396,6 @@ class ISO8601Test {
 
     @Test
     fun formatDurationTest() {
-        // TODO Resolve disagreement with provided tests here
         assertEquals(
             "P2DT6H",
             formatDuration(
@@ -1408,6 +1406,7 @@ class ISO8601Test {
             )
         )
         assertEquals("PT0S", formatDuration(durFromHours(0)))
+        assertEquals("PT1.001S", formatDuration(durAdd(durFromSeconds(1), durFromMillis(1))))
     }
 
     // TODO Write tests
