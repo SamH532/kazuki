@@ -14,15 +14,25 @@ import kotlin.math.min
 @Module
 object ISO8601 {
 
+    // TODO Make the functions methods on types:
+    //  e.g. instead of durToMin(), use a function dur.toMin()
+    //  Do the same for nats: e.g. durFromSec(<nat>) goes to <nat>.secToDur()
+
+    // TODO Use nat instead of longNat
+    //  and "@Ignore" all tests that fail due to it being an int
+    //  instead of a nat (i.e. overflows)
+
+    // TODO Message Simon to confirm that he wants nanoseconds to be the smallest time period, instead of millisecond
+
+
     interface Duration {
 
         val dur: longNat
 
-        // TODO Convert tests into new format
         @FunctionProvider(DurationFunctions::class)
         val functions: DurationFunctions
 
-        open class DurationFunctions(val d: Duration) {
+        open class DurationFunctions(private val d: Duration) {
             val toMillis = function(
                 command = { d.dur },
                 post = { result -> durFromMillis(result) == d }
@@ -81,7 +91,7 @@ object ISO8601 {
                     val dy = durFromDays(d.functions.toDays())
                     mk_DTG(dy.functions.toDate(), durDiff(d, dy).functions.toTime())
                 },
-                post = { result -> durFromDTG(result) == d }
+                post = { result -> result.functions.toDur() == d }
             )
 
             val toDate = function(
@@ -93,10 +103,8 @@ object ISO8601 {
                     mk_Date(yr, mn, dy)
                 },
                 post = { result ->
-                    durFromDate(result).dur <= d.dur && d.dur < durAdd(
-                        durFromDate(result),
-                        ONE_DAY
-                    ).dur
+                    result.functions.toDur().dur <= d.dur && d.dur <
+                            result.functions.toDur().functions.add(ONE_DAY).dur
                 }
             )
 
@@ -104,28 +112,110 @@ object ISO8601 {
                 command = {
                     val hr = d.functions.toHours()
                     val mn = durDiff(d, durFromHours(hr)).functions.toMinutes()
-                    val hmd = durAdd(durFromHours(hr), durFromMinutes(mn))
+                    val hmd = durFromHours(hr).functions.add(durFromMinutes(mn))
                     val sc = durDiff(d, hmd).functions.toSeconds()
-                    val ml = durDiff(d, durAdd(hmd, durFromSeconds(sc.toLong()))).functions.toMillis()
+                    val ml = durDiff(d, hmd.functions.add(durFromSeconds(sc))).functions.toMillis()
                     mk_Time(hr.toInt(), mn.toInt(), sc.toInt(), ml.toInt())
                 },
-                post = { result -> durFromTime(result) == d }
+                post = { result -> result.functions.toDur() == d }
             )
+
+            val add: (Duration) -> Duration = function(
+                command = { dur: Duration ->
+                    mk_Duration(d.dur + dur.dur)
+                },
+                post = { dur, result ->
+//            durDiff(result, d) == dur && durDiff(result, dur) == d &&
+                    result.functions.subtract(d) == dur && result.functions.subtract(dur) == d
+                }
+            )
+
+            val subtract: (Duration) -> Duration = function(
+                command = { dur: Duration ->
+                    mk_Duration(d.dur - dur.dur)
+                },
+                pre = { dur -> d.dur >= dur.dur },
+//        post = { dur, result -> result.functions.add(dur) == d }
+            )
+
+            val multiply: (nat) -> Duration = function(
+                command = { n: nat ->
+                    mk_Duration(d.dur * n)
+                },
+                post = { n: nat, result -> result.functions.divide(n) == d }
+            )
+
+            val divide: (nat) -> Duration = function(
+                command = { n: nat ->
+                    mk_Duration(d.dur / n)
+                },
+//        post = { n, result ->
+//            result.functions.multiply(n).dur <= dur.dur && dur.dur < result.functions.multiply(n+1).dur
+//        }
+            )
+
+            val modMinutes = function(
+                command = { mk_Duration(d.dur % ONE_MINUTE.dur) },
+                post = { result ->
+                    result.dur < ONE_MINUTE.dur
+//         && exists(0..mk_DTG(LAST_DATE, LAST_TIME).functions.toDur().functions.toMinutes()) { durAdd(durFromMinutes(it),result) == d }
+                }
+            )
+            val modHours = function(
+                command = { mk_Duration(d.dur % ONE_HOUR.dur) },
+                post = { result ->
+                    result.dur < ONE_HOUR.dur
+//         && exists(0..mk_DTG(LAST_DATE, LAST_TIME).functions.toDur().functions.toHours()) { durAdd(durFromHours(it),result) == d }
+                }
+            )
+            val modDays = function(
+                command = { mk_Duration(d.dur % ONE_DAY.dur) },
+                post = { result ->
+                    result.dur < ONE_DAY.dur
+//         && exists(0..mk_DTG(LAST_DATE, LAST_TIME).functions.toDur().functions.toDays()) { durAdd(durFromDays(it),result) == d }
+                }
+            )
+
+            val format = function<String>(
+                command = {
+                    val numDays = d.functions.toDays()
+                    val timeOfDay = d.functions.modDays().functions.toTime()
+                    val item: (nat, Char) -> String = function(
+                        command = { n: nat, c: Char ->
+                            if (n == 0) {
+                                ""
+                            } else {
+                                String.format("%d%s", n, c)
+                            }
+                        }
+                    )
+                    val itemSec: (nat, nat) -> String = function(
+                        command = { x: nat, y: nat ->
+                            String.format("%d.%03dS", x, y)
+                        }
+                    )
+
+                    val date = item(numDays.toInt(), 'D')
+                    val time = item(timeOfDay.hour, 'H') + item(timeOfDay.minute, 'M') +
+                            if (timeOfDay.millisecond == 0) {
+                                item(timeOfDay.second, 'S')
+                            } else {
+                                itemSec(timeOfDay.second, timeOfDay.millisecond)
+                            }
+                    if (date == "" && time == "") {
+                        "PT0S"
+                    } else {
+                        "P" + date + if (time == "") {
+                            ""
+                        } else {
+                            "T" + time
+                        }
+                    }
+                }
+            )
+
         }
     }
-
-    // TODO Make the functions methods on types:
-    //  e.g. instead of durToMin(), use a function dur.toMin()
-    //  Do the same for nats: e.g. durFromSec(<nat>) goes to <nat>.secToDur()
-    //  Look at refactoring (under edit) to update these
-
-    //  Look at kspec for examples of this
-
-    // TODO Use nat instead of longNat
-    //  and "@Ignore" all tests that fail due to it being an int
-    //  instead of a nat (i.e. overflows)
-
-    // TODO Message Simon to confirm that he wants nanoseconds to be the smallest time period, instead of millisecond
 
     @PrimitiveInvariant(name = "Year", base = nat::class)
     fun yearNotInRange(y: nat) = y in FIRST_YEAR..LAST_YEAR
@@ -140,13 +230,13 @@ object ISO8601 {
     fun hourNotInRange(h: nat) = h < HOURS_PER_DAY
 
     @PrimitiveInvariant(name = "Minute", base = nat::class)
-    fun minuteNotInRange(m: nat) = m <= MINUTES_PER_HOUR
+    fun minuteNotInRange(m: nat) = m < MINUTES_PER_HOUR
 
     @PrimitiveInvariant(name = "Second", base = nat::class)
-    fun secondNotInRange(s: nat) = s in 0..SECONDS_PER_MINUTE
+    fun secondNotInRange(s: nat) = s < SECONDS_PER_MINUTE
 
     @PrimitiveInvariant(name = "Millisecond", base = nat::class)
-    fun millisecondNotInRange(m: nat) = m in 0..MILLIS_PER_SECOND
+    fun millisecondNotInRange(m: nat) = m < MILLIS_PER_SECOND
 
     interface Date {
         val year: Year
@@ -157,7 +247,35 @@ object ISO8601 {
         fun isDayValid() = day <= daysInMonth(year, month)
 
         @ComparableProperty
-        val dur: longNat get() = durFromDate(this).dur
+        val dur: longNat get() = this.functions.toDur().dur
+
+        @FunctionProvider(DateFunctions::class)
+        val functions: DateFunctions
+
+        open class DateFunctions(private val date: Date) {
+
+            val toDur = function<Duration>(
+                command = {
+                    durUpToYear(date.year).functions.add(
+                        durUpToMonth(date.year, date.month).functions.add(
+                            durFromDays(date.day - 1.toLong())
+                        )
+                    )
+                },
+//        post = { date, result -> result.functions.toDate() == date }
+            )
+
+            val format = function<String>(
+                command = { String.format("%04d-%02d-%02d", date.year, date.month, date.day) }
+            )
+
+            val toDayOfWeek = function<DayOfWeek>(
+                command = {
+                    val d = (date.functions.toDur().functions.toDays().toInt() - 365) % 7
+                    DayOfWeek.entries[d]
+                }
+            )
+        }
     }
 
     interface Time {
@@ -167,18 +285,98 @@ object ISO8601 {
         val millisecond: Millisecond
 
         @ComparableProperty
-        val dur: longNat get() = durFromTime(this).dur
+        val dur: longNat get() = this.functions.toDur().dur
+
+
+        @FunctionProvider(TimeFunctions::class)
+        val functions: TimeFunctions
+
+        open class TimeFunctions(private val time: Time) {
+            val toDur = function<Duration>(
+                command = {
+                    durFromHours(time.hour.toLong()).functions.add(
+                        durFromMinutes(time.minute.toLong()).functions.add(
+                            durFromSeconds(time.second.toLong()).functions.add(
+                                durFromMillis(time.millisecond.toLong())
+                            )
+                        )
+                    )
+                },
+//        post = { time, result -> result.functions.toTime() == time }
+            )
+
+            val format = function<String>(
+                command = {
+                    val frac = if (time.millisecond == 0) {
+                        ""
+                    } else {
+                        String.format(".%03d", time.millisecond)
+                    }
+                    String.format("%02d:%02d:%02d%s", time.hour, time.minute, time.second, frac)
+                }
+            )
+        }
+
     }
 
     interface TimeInZone {
         val time: Time
         val offset: Offset
 
-
-        val nTime get() = normaliseTime(this)._1
+        val nTime get() = this.functions.normaliseTime()._1
 
         @ComparableProperty
-        val dur get() = durFromTime(nTime).dur
+        val dur get() = nTime.functions.toDur().dur
+
+        @FunctionProvider(TIZFunctions::class)
+        val functions: TIZFunctions
+
+        open class TIZFunctions(private val time: TimeInZone) {
+
+            val toDur = function(
+                command = { time.functions.normaliseTime()._1.functions.toDur() },
+                post = { result -> result.functions.toTime().dur == time.dur }
+            )
+            val normaliseTime = function<Tuple2<Time, PlusOrMinus>>(
+                command = {
+                    val utcTimeDur = time.time.functions.toDur()
+                    val offset = time.offset.delta
+                    when (time.offset) {
+                        mk_Offset(offset, PlusOrMinus.Plus) ->
+                            if (offset.dur <= utcTimeDur.dur) {
+                                mk_(utcTimeDur.functions.subtract(offset).functions.toTime(), PlusOrMinus.None)
+                            } else {
+                                mk_(
+                                    utcTimeDur.functions.add(ONE_DAY).functions.subtract(offset).functions.toTime(),
+                                    PlusOrMinus.Plus
+                                )
+                            }
+
+                        mk_Offset(offset, PlusOrMinus.Minus) -> {
+                            val adjusted = utcTimeDur.functions.add(offset)
+                            if (adjusted.dur < ONE_DAY.dur) {
+                                mk_(adjusted.functions.toTime(), PlusOrMinus.None)
+                            } else {
+                                mk_(adjusted.functions.subtract(ONE_DAY).functions.toTime(), PlusOrMinus.Minus)
+                            }
+                        }
+
+                        else -> mk_(time.time, PlusOrMinus.None)
+                    }
+                }
+            )
+            val format = function<String>(
+                command = {
+                    time.time.functions.format() + (
+                            if (time.offset.delta.dur == NO_DURATION.dur) {
+                                "Z"
+                            } else {
+                                time.offset.functions.format()
+                            }
+                            )
+                }
+            )
+        }
     }
 
     interface Offset {
@@ -189,7 +387,7 @@ object ISO8601 {
         fun offsetMoreThanDay() = delta.dur < ONE_DAY.dur
 
         @Invariant
-        fun offsetZero() = durModMinutes(delta) == NO_DURATION
+        fun offsetZero() = delta.functions.modMinutes() == NO_DURATION
 
         @ComparableProperty
         val comp: longNat
@@ -198,6 +396,32 @@ object ISO8601 {
                 PlusOrMinus.Minus -> delta.dur - 1
                 PlusOrMinus.None -> delta.dur
             }
+
+        @FunctionProvider(offsetFunctions::class)
+        val functions: offsetFunctions
+
+        open class offsetFunctions(private val offset: Offset) {
+
+            val format = function<String>(
+                command = {
+                    val hm = offset.delta.functions.toTime()
+                    val sign = when (offset.pm) {
+                        PlusOrMinus.Plus -> {
+                            "+"
+                        }
+
+                        PlusOrMinus.Minus -> {
+                            "-"
+                        }
+
+                        else -> {
+                            ""
+                        }
+                    }
+                    String.format("%s%02d:%02d", sign, hm.hour, hm.minute)
+                }
+            )
+        }
     }
 
     interface DTG {
@@ -205,23 +429,111 @@ object ISO8601 {
         val time: Time
 
         @ComparableProperty
-        val dur: longNat get() = durFromDTG(this).dur
+        val dur: longNat get() = this.functions.toDur().dur
+
+        @FunctionProvider(DTGFunctions::class)
+        val functions: DTGFunctions
+
+        open class DTGFunctions(private val dtg: DTG) {
+
+            val add: (Duration) -> DTG = function(
+                command = { dur: Duration ->
+                    dtg.functions.toDur().functions.add(dur).functions.toDTG()
+                },
+                post = { dur, result -> result.functions.subtract(dur) == dtg }
+            )
+
+            val subtract: (Duration) -> DTG = function(
+                command = { dur ->
+                    durDiff(dtg.functions.toDur(), dur).functions.toDTG()
+                },
+                pre = { dur -> dur.dur <= dtg.functions.toDur().dur },
+//        post = { dtg, dur, result -> add(result, dur) == dtg }
+            )
+
+            val toDur = function<Duration>(
+                command = { dtg.date.functions.toDur().functions.add(dtg.time.functions.toDur()) },
+            )
+
+            val within: (Duration, DTG) -> bool = function(
+                command = { dur: Duration, target: DTG ->
+                    if (dur.dur.toInt() == 0) {
+                        dtg.dur == target.dur
+                    } else {
+                        dtg.functions.inInterval(mk_Interval(target.functions.subtract(dur), target.functions.add(dur)))
+                    }
+                },
+                post = { dur, target, result -> (dur.dur == 0.toLong()) implies ((dtg == target) == result) }
+            )
+
+            val inInterval: (Interval) -> bool = function(
+                command = { ival: Interval ->
+                    dtg.functions.inRange(ival.begins, ival.ends)
+                }
+            )
+
+            val inRange: (DTG, DTG) -> bool = function(
+                command = { lowerDTG: DTG, upperDTG: DTG ->
+                    lowerDTG.dur <= dtg.dur && dtg.dur < upperDTG.dur
+                }
+            )
+
+            val finestGranularity: (Duration) -> bool = function(
+                command = { d: Duration ->
+                    dtg.functions.toDur().dur % d.dur == 0.toLong()
+                },
+                pre = { d -> d.dur != NO_DURATION.dur }
+            )
+
+            val instant = function(
+                command = { mk_Interval(dtg, dtg.functions.add(ONE_MILLISECOND)) },
+                post = { result -> dtg.functions.inInterval(result) }
+            )
+
+            val format = function<String>(
+                command = { dtg.date.functions.format() + "T" + dtg.time.functions.format() }
+            )
+
+        }
     }
 
     interface DTGInZone {
         val date: Date
         val time: TimeInZone
 
+        @Invariant
+        fun DTGTooEarly() = !(date == FIRST_DATE && this.time.functions.normaliseTime()._2 == PlusOrMinus.Plus)
 
         @Invariant
-        fun DTGTooEarly() = !(date == FIRST_DATE && normaliseTime(this.time)._2 == PlusOrMinus.Plus)
-
-        @Invariant
-        fun DTGTooLate() = !(date == LAST_DATE && normaliseTime(this.time)._2 == PlusOrMinus.Minus)
+        fun DTGTooLate() = !(date == LAST_DATE && this.time.functions.normaliseTime()._2 == PlusOrMinus.Minus)
 
         @ComparableProperty
-        val dur: longNat get() = durFromDTG(normalise(this)).dur
+        val dur: longNat get() = this.functions.normalise().functions.toDur().dur
 
+
+        @FunctionProvider(DTGIZFunctions::class)
+        val functions: DTGIZFunctions
+
+        open class DTGIZFunctions(private val dtgIZ: DTGInZone) {
+
+            val normalise = function<DTG>(
+                command = {
+                    val ntime = dtgIZ.time.functions.normaliseTime()
+                    val baseDTG = mk_DTG(dtgIZ.date, ntime._1)
+                    when (ntime._2) {
+                        PlusOrMinus.Plus -> baseDTG.functions.subtract(ONE_DAY)
+                        PlusOrMinus.Minus -> baseDTG.functions.add(ONE_DAY)
+                        PlusOrMinus.None -> baseDTG
+                    }
+                }
+            )
+
+            val format = function<String>(
+                command = { dtgIZ.date.functions.format() + "T" + dtgIZ.time.functions.format() }
+            )
+
+
+        }
     }
 
     interface Interval {
@@ -233,6 +545,50 @@ object ISO8601 {
 
         @Invariant
         fun beginAfterEnd() = begins.dur <= ends.dur
+
+        @FunctionProvider(IntervalFunctions::class)
+        val functions: IntervalFunctions
+
+        open class IntervalFunctions(private val interval: Interval) {
+            val within: (Interval) -> bool = function(
+                command = { containerInterval: Interval ->
+                    containerInterval.begins.dur <= interval.begins.dur && interval.ends.dur <= containerInterval.ends.dur
+                },
+                post = { containerInterval, result ->
+                    result == (containerInterval.begins.dur <= interval.begins.dur
+                            && interval.ends.dur <= containerInterval.ends.dur)
+                }
+            )
+            val overlap: (Interval) -> bool = function(
+                command = { other: Interval ->
+                    other.begins.dur < interval.ends.dur && interval.begins.dur < other.ends.dur
+                },
+                post = { other, result ->
+                    result == exists(
+                        max(interval.begins.dur, other.begins.dur)..min(
+                            interval.ends.dur,
+                            other.ends.dur
+                        )
+                    ) {
+                        mk_Duration(it).functions.toDTG().functions.inInterval(interval)
+                                && mk_Duration(it).functions.toDTG().functions.inInterval(other)
+                    }
+                }
+            )
+            val toDur = function(
+                command = { diff(interval.begins, interval.ends) },
+                post = { result -> interval.begins.functions.add(result) == interval.ends }
+            )
+            val finestGranularityI: (Duration) -> bool = function(
+                command = { d: Duration ->
+                    interval.begins.functions.finestGranularity(d) && interval.ends.functions.finestGranularity(d)
+                }
+            )
+
+            val format = function<String>(
+                command = { interval.begins.functions.format() + "/" + interval.ends.functions.format() }
+            )
+        }
     }
 
     enum class PlusOrMinus {
@@ -241,9 +597,15 @@ object ISO8601 {
         None
     }
 
-
-    // TODO Make interface
-//    interface DayOfWeek {}
+    enum class DayOfWeek {
+        Sunday,
+        Monday,
+        Tuesday,
+        Wednesday,
+        Thursday,
+        Friday,
+        Saturday
+    }
 
     private const val MILLIS_PER_SECOND: nat = 1000
     private const val SECONDS_PER_MINUTE: nat = 60
@@ -289,6 +651,7 @@ object ISO8601 {
 
 // FUNCTIONS
 
+    // TODO Work out how to move these
     val isLeap: (Year) -> bool = function(
         command = { y: Year ->
             y % 4 == 0 && ((y % 100 == 0) implies { y % 400 == 0 })
@@ -305,59 +668,10 @@ object ISO8601 {
         }
     )
 
-    val add: (DTG, Duration) -> DTG = function(
-        command = { dtg, dur ->
-            durToDTG(durAdd(durFromDTG(dtg), dur))
-        },
-        post = { dtg, dur, result -> subtract(result, dur) == dtg }
-    )
-
-    val subtract: (DTG, Duration) -> DTG = function(
-        command = { dtg, dur ->
-            durToDTG(durDiff(durFromDTG(dtg), dur))
-        },
-        pre = { dtg, dur -> dur.dur <= durFromDTG(dtg).dur },
-//        post = { dtg, dur, result -> add(result, dur) == dtg }
-    )
-
     val diff: (DTG, DTG) -> Duration = function(
         command = { dtg1: DTG, dtg2: DTG ->
-            durDiff(durFromDTG(dtg1), durFromDTG(dtg2))
+            durDiff(dtg1.functions.toDur(), dtg2.functions.toDur())
         }
-    )
-
-    val durAdd: (Duration, Duration) -> Duration = function(
-        command = { dur1: Duration, dur2: Duration ->
-            mk_Duration(dur1.dur + dur2.dur)
-        },
-        post = { dur1, dur2, result ->
-//            durDiff(result, dur1) == dur2 && durDiff(result, dur2) == dur1 &&
-            durSubtract(result, dur1) == dur2 && durSubtract(result, dur2) == dur1
-        }
-    )
-
-    val durSubtract: (Duration, Duration) -> Duration = function(
-        command = { dur1: Duration, dur2: Duration ->
-            mk_Duration(dur1.dur - dur2.dur)
-        },
-        pre = { dur1, dur2 -> dur1.dur >= dur2.dur },
-//        post = { dur1, dur2, result -> durAdd(result, dur2) == dur1 }
-    )
-
-    val durMultiply: (Duration, nat) -> Duration = function(
-        command = { dur: Duration, n: nat ->
-            mk_Duration(dur.dur * n)
-        },
-        post = { dur: Duration, n: nat, result -> durDivide(result, n) == dur }
-    )
-
-    val durDivide: (Duration, nat) -> Duration = function(
-        command = { dur: Duration, n: nat ->
-            mk_Duration(dur.dur / n)
-        },
-//        post = { dur, n, result ->
-//            durMultiply(result, n).dur <= dur.dur && dur.dur < durMultiply(result, n + 1).dur
-//        }
     )
 
     val durDiff: (Duration, Duration) -> Duration = function(
@@ -365,287 +679,84 @@ object ISO8601 {
             mk_Duration(abs(dur1.dur - dur2.dur))
         },
         post = { dur1, dur2, result ->
-            ((dur1.dur <= dur2.dur) implies (durAdd(dur1, result) == dur2)) &&
-                    ((dur2.dur <= dur1.dur) implies (durAdd(dur2, result) == dur1))
+            ((dur1.dur <= dur2.dur) implies (dur1.functions.add(result) == dur2)) &&
+                    ((dur2.dur <= dur1.dur) implies (dur2.functions.add(result) == dur1))
         }
     )
 
-
-    val dtgInRange: (DTG, DTG, DTG) -> bool = function(
-        command = { dtg1: DTG, dtg2: DTG, dtg3: DTG ->
-            dtg1.dur <= dtg2.dur && dtg2.dur < dtg3.dur
-        }
-    )
-
-    val dtgWithin: (DTG, Duration, DTG) -> bool = function(
-        command = { dtg: DTG, dur: Duration, target: DTG ->
-            if (dur.dur.toInt() == 0) {
-                dtg.dur == target.dur
-            } else {
-                inInterval(dtg, mk_Interval(subtract(target, dur), add(target, dur)))
-            }
-        },
-        post = { dtg, dur, target, result -> (dur.dur == 0.toLong()) implies ((dtg == target) == result) }
-    )
-
-    val inInterval: (DTG, Interval) -> bool = function(
-        command = { dtg: DTG, ival: Interval ->
-            dtgInRange(ival.begins, dtg, ival.ends)
-        }
-    )
-
-    val overlap: (Interval, Interval) -> bool = function(
-        command = { i1: Interval, i2: Interval ->
-            i2.begins.dur < i1.ends.dur && i1.begins.dur < i2.ends.dur
-        },
-        post = { i1, i2, result ->
-            result == exists(max(i1.begins.dur, i2.begins.dur)..min(i1.ends.dur, i2.ends.dur)) {
-                inInterval(durToDTG(mk_Duration(it)), i1) && inInterval(durToDTG(mk_Duration(it)), i2)
-            }
-        }
-    )
-
-    val within: (Interval, Interval) -> bool = function(
-        command = { i1: Interval, i2: Interval ->
-            i2.begins.dur <= i1.begins.dur && i1.ends.dur <= i2.ends.dur
-        },
-        post = { i1, i2, result ->
-            result == (i2.begins.dur <= i1.begins.dur && i1.ends.dur <= i2.ends.dur)
-        }
-    )
-
-    val durToMillis: (Duration) -> longNat = function(
-        command = { d: Duration ->
-            d.dur
-        },
-        post = { d, result -> durFromMillis(result) == d }
-    )
+    // TODO Work out how to move these
     val durFromMillis: (longNat) -> Duration = function(
         command = { ms: longNat ->
             mk_Duration(ms)
         },
-//        post = { ms, result -> durToMillis(result) == ms }
+//        post = { ms, result -> result.functions.toMillis() == ms }
     )
 
-    val durToSeconds: (Duration) -> longNat = function(
-        command = { d: Duration ->
-            durToMillis(d) / MILLIS_PER_SECOND
-        },
-        post = { d, result -> durFromSeconds(result).dur <= d.dur && d.dur < durFromSeconds(result + 1).dur }
-    )
+    // TODO Work out how to move these
     val durFromSeconds: (longNat) -> Duration = function(
         command = { sc: longNat ->
             durFromMillis((sc * MILLIS_PER_SECOND))
         },
-//        post = { sc, result -> durToSeconds(result) == sc }
+//        post = { sc, result -> result.functions.toSeconds() == sc }
     )
 
-    val durToMinutes: (Duration) -> longNat = function(
-        command = { d: Duration ->
-            durToSeconds(d) / SECONDS_PER_MINUTE
-        },
-        post = { d, result -> durFromMinutes(result).dur <= d.dur && d.dur < durFromMinutes(result + 1).dur }
-    )
+    // TODO Work out how to move these
     val durFromMinutes: (longNat) -> Duration = function(
         command = { mn: longNat ->
             durFromSeconds((mn * SECONDS_PER_MINUTE).toLong())
         },
-//        post = { mn, result -> durToMinutes(result) == mn }
+//        post = { mn, result -> result.functions.toMinutes() == mn }
     )
 
-    val durModMinutes: (Duration) -> Duration = function(
-        command = { d: Duration ->
-            mk_Duration(d.dur % ONE_MINUTE.dur)
-        },
-        post = { d, result ->
-            result.dur < ONE_MINUTE.dur
-//         && exists(0..durToMinutes(durFromDTG(mk_DTG(LAST_DATE, LAST_TIME)))) { durAdd(durFromMinutes(it),result) == d }
-        }
-    )
 
-    val durToHours: (Duration) -> longNat = function(
-        command = { d: Duration ->
-            durToMinutes(d) / MINUTES_PER_HOUR
-        },
-        post = { d, result -> durFromHours(result).dur <= d.dur && d.dur < durFromHours(result + 1).dur }
-    )
+    // TODO Work out how to move these
     val durFromHours: (longNat) -> Duration = function(
         command = { hr: longNat ->
             durFromMinutes(hr * MINUTES_PER_HOUR)
         },
-//        post = { hr, result -> durToHours(result) == hr }
+//        post = { hr, result -> result.functions.toHours() == hr }
     )
 
-    val durModHours: (Duration) -> Duration = function(
-        command = { d: Duration ->
-            mk_Duration(d.dur % ONE_HOUR.dur)
-        },
-        post = { d, result ->
-            result.dur < ONE_HOUR.dur
-//         && exists(0..durToHours(durFromDTG(mk_DTG(LAST_DATE, LAST_TIME)))) { durAdd(durFromHours(it),result) == d }
-        }
-    )
 
-    val durToDays: (Duration) -> longNat = function(
-        command = { d: Duration ->
-            durToHours(d) / HOURS_PER_DAY
-        },
-        post = { d, result -> durFromDays(result).dur <= d.dur && d.dur < durFromDays(result + 1).dur }
-    )
+    // TODO Work out how to move these
     val durFromDays: (longNat) -> Duration = function(
         command = { dy: longNat ->
             durFromHours(dy * HOURS_PER_DAY)
         },
-//        post = { dy, result -> durToDays(result) == dy }
+//        post = { dy, result -> result.functions.toDays() == dy }
     )
 
-    val durModDays: (Duration) -> Duration = function(
-        command = { d: Duration ->
-            mk_Duration(d.dur % ONE_DAY.dur)
-        },
-        post = { d, result ->
-            result.dur < ONE_DAY.dur
-//         && exists(0..durToDays(durFromDTG(mk_DTG(LAST_DATE, LAST_TIME)))) { durAdd(durFromDays(it),result) == d }
-        }
-    )
-
-    val durToMonth: (Duration, Year) -> longNat = function(
-        command = { d: Duration, yr: Year ->
-            ((set(1..MONTHS_PER_YEAR,
-                filter = { durUpToMonth(yr, it).dur <= d.dur }) { it }).max()).toLong() - 1.toLong()
-        },
-        pre = { d, yr -> d.dur < durFromYear(yr).dur }
-    )
+    // TODO Work out how to move these
     val durFromMonth: (Year, Month) -> Duration = function(
         command = { yr: Year, mn: Month ->
             durFromDays(daysInMonth(yr, mn).toLong())
         }
     )
+
+    // TODO Work out how to move these
     val durUpToMonth: (Year, Month) -> Duration = function(
         command = { yr: Year, mn: Month ->
             sumDuration(seq(1..mn - 1) { durFromMonth(yr, it) })
         }
     )
 
-    val durToYear: (Duration, Year) -> longNat by lazy {
-        function(
-            // TODO Use a general JAVA function here
-            command = { d: Duration, yr: Year ->
-                if (d.dur < durFromYear(yr).dur) {
-                    0
-                } else {
-                    1 + durToYear(durDiff(d, durFromYear(yr)), yr + 1)
-                }
-            },
-            // TODO Confirm why this was commented out in VDM
-            // TODO Test year above and below instead of like this
-//            post = { d, yr, result ->
-//                (set(FIRST_YEAR..LAST_YEAR,
-//                    filter = { durUpToYear(yr + it).dur <= d.dur }) { it }).max().toLong() == result
-//            },
-            measure = { _, yr -> -yr }
-        )
-    }
-
+    // TODO Work out how to move these
     val durFromYear: (Year) -> Duration = function(
         command = { yr: Year ->
             durFromDays(daysInYear(yr).toLong())
         }
     )
+
+    // TODO Work out how to move these
     val durUpToYear: (Year) -> Duration = function(
         command = { yr: Year ->
             sumDuration(seq(FIRST_YEAR..yr - 1) { durFromYear(it) })
         }
     )
 
-    val durToDTG: (Duration) -> DTG = function(
-        command = { d: Duration ->
-            val dy = durFromDays(durToDays(d))
-            mk_DTG(durToDate(dy), durToTime(durDiff(d, dy)))
-        },
-        post = { d, result -> durFromDTG(result) == d }
-    )
-    val durFromDTG: (DTG) -> Duration = function(
-        command = { dtg: DTG ->
-            durAdd(durFromDate(dtg.date), durFromTime(dtg.time))
-        },
-//        post = { dtg, result -> durToDTG(result) == dtg }
-    )
-
-    val durToDate: (Duration) -> Date = function(
-        command = { d: Duration ->
-            val yr = durToYear(d, FIRST_YEAR).toInt()
-            val ydur = durDiff(d, durUpToYear(yr))
-            val mn = durToMonth(ydur, yr).toInt() + 1
-            val dy = durToDays(durDiff(ydur, durUpToMonth(yr, mn))).toInt() + 1
-            mk_Date(yr, mn, dy)
-        },
-        post = { d, result -> durFromDate(result).dur <= d.dur && d.dur < durAdd(durFromDate(result), ONE_DAY).dur }
-    )
-    val durFromDate: (Date) -> Duration = function(
-        command = { date: Date ->
-            durAdd(
-                durUpToYear(date.year),
-                durAdd(durUpToMonth(date.year, date.month), durFromDays(date.day - 1.toLong()))
-            )
-        },
-//        post = { date, result -> durToDate(result) == date }
-    )
-
-    val durToTime: (Duration) -> Time = function(
-        command = { d: Duration ->
-            val hr = durToHours(d)
-            val mn = durToMinutes(durDiff(d, durFromHours(hr)))
-            val hmd = durAdd(durFromHours(hr), durFromMinutes(mn))
-            val sc = durToSeconds(durDiff(d, hmd))
-            val ml = durToMillis(durDiff(d, durAdd(hmd, durFromSeconds(sc.toLong()))))
-            mk_Time(hr.toInt(), mn.toInt(), sc.toInt(), ml.toInt())
-        },
-        post = { d, result -> durFromTime(result) == d }
-    )
-    val durFromTime: (Time) -> Duration = function(
-        command = { time: Time ->
-            durAdd(
-                durFromHours(time.hour.toLong()),
-                durAdd(
-                    durFromMinutes(time.minute.toLong()),
-                    durAdd(durFromSeconds(time.second.toLong()), durFromMillis(time.millisecond.toLong()))
-                )
-            )
-        },
-//        post = { time, result -> durToTime(result) == time }
-    )
-
-    val durFromTimeInZone: (TimeInZone) -> Duration = function(
-        command = { time: TimeInZone ->
-            durFromTime(normaliseTime(time)._1)
-        },
-        post = { time, result -> durToTime(result).dur == time.dur }
-    )
-
-    val durFromInterval: (Interval) -> Duration = function(
-        command = { i: Interval ->
-            diff(i.begins, i.ends)
-        },
-        post = { i, result -> add(i.begins, result) == i.ends }
-    )
-
-    val finestGranularity: (DTG, Duration) -> bool = function(
-        command = { dtg: DTG, d: Duration ->
-            durFromDTG(dtg).dur % d.dur == 0.toLong()
-        },
-        pre = { _, d -> d.dur != NO_DURATION.dur }
-    )
-
-    val finestGranularityI: (Interval, Duration) -> bool = function(
-        command = { i: Interval, d: Duration ->
-            finestGranularity(i.begins, d) && finestGranularity(i.ends, d)
-        }
-    )
-
     val minDTG: (Set1<DTG>) -> DTG = function(
         command = { dtgs: Set1<DTG> ->
-            durToDTG(mk_Duration((set(dtgs) { it.dur }).min()))
+            mk_Duration((set(dtgs) { it.dur }).min()).functions.toDTG()
         },
         post = { dtgs, result ->
             result in dtgs && forall(dtgs) { result.dur <= it.dur }
@@ -653,7 +764,7 @@ object ISO8601 {
     )
     val maxDTG: (Set1<DTG>) -> DTG = function(
         command = { dtgs: Set1<DTG> ->
-            durToDTG(mk_Duration((set(dtgs) { it.dur }).max()))
+            mk_Duration((set(dtgs) { it.dur }).max()).functions.toDTG()
         },
         post = { dtgs, result ->
             result in dtgs && forall(dtgs) { result.dur >= it.dur }
@@ -662,7 +773,7 @@ object ISO8601 {
 
     val minDate: (Set1<Date>) -> Date = function(
         command = { dates: Set1<Date> ->
-            durToDate(mk_Duration((set(dates) { it.dur }).min()))
+            mk_Duration((set(dates) { it.dur }).min()).functions.toDate()
         },
         post = { dates, result ->
             result in dates && forall(dates) { result.dur <= it.dur }
@@ -670,7 +781,7 @@ object ISO8601 {
     )
     val maxDate: (Set1<Date>) -> Date = function(
         command = { dates: Set1<Date> ->
-            durToDate(mk_Duration((set(dates) { it.dur }).max()))
+            mk_Duration((set(dates) { it.dur }).max()).functions.toDate()
         },
         post = { dates, result ->
             result in dates && forall(dates) { result.dur >= it.dur }
@@ -679,7 +790,7 @@ object ISO8601 {
 
     val minTime: (Set1<Time>) -> Time = function(
         command = { times: Set1<Time> ->
-            durToTime(mk_Duration((set(times) { it.dur }).min()))
+            mk_Duration((set(times) { it.dur }).min()).functions.toTime()
         },
         post = { times, result ->
             result in times && forall(times) { result.dur <= it.dur }
@@ -687,7 +798,7 @@ object ISO8601 {
     )
     val maxTime: (Set1<Time>) -> Time = function(
         command = { times: Set1<Time> ->
-            durToTime(mk_Duration((set(times) { it.dur }).max()))
+            mk_Duration((set(times) { it.dur }).max()).functions.toTime()
         },
         post = { times, result ->
             result in times && forall(times) { result.dur >= it.dur }
@@ -715,13 +826,6 @@ object ISO8601 {
         command = { sd: Sequence<Duration> ->
             mk_Duration((seq(sd) { it.dur }).sum())
         }
-    )
-
-    val instant: (DTG) -> Interval = function(
-        command = { dtg: DTG ->
-            mk_Interval(dtg, add(dtg, ONE_MILLISECOND))
-        },
-        post = { dtg, result -> inInterval(dtg, result) }
     )
 
     val nextDateForYM: (Date) -> Date = function(
@@ -797,142 +901,57 @@ object ISO8601 {
             measure = { yy, mm, _, _ -> yy * MONTHS_PER_YEAR + mm }
         )
     }
-    
-    val normalise: (DTGInZone) -> DTG = function(
-        command = { dtgIZ: DTGInZone ->
-            val ntime = normaliseTime(dtgIZ.time)
-            val baseDTG = mk_DTG(dtgIZ.date, ntime._1)
-            when (ntime._2) {
-                PlusOrMinus.Plus -> subtract(baseDTG, ONE_DAY)
-                PlusOrMinus.Minus -> add(baseDTG, ONE_DAY)
-                PlusOrMinus.None -> baseDTG
-            }
+
+    //TODO Write function
+    val isDate: (String) -> bool = function(
+        command = { str: String -> true }
+    )
+
+    //TODO Write function
+    val isDTG: (String) -> bool = function(
+        command = { str: String -> true }
+    )
+
+    //TODO Write Function
+    val strToDate: (String) -> Date = function(
+        command = { s: String -> mk_Date(1, 1, 1) },
+        pre = { s -> isDate(s) }
+    )
+
+    //TODO Write Function
+    val strToDTG: (String) -> DTG = function(
+        command = { s: String -> mk_DTG(mk_Date(1, 1, 1), mk_Time(1, 1, 1, 1)) },
+        pre = { s -> isDTG(s) }
+    )
+
+    //TODO Write function
+    val addMonths: (DTG, nat) -> DTG = function(
+        command = { dtg: DTG, n: nat ->
+            dtg
         }
     )
 
-    val normaliseTime: (TimeInZone) -> Tuple2<Time, PlusOrMinus> = function(
-        command = { time: TimeInZone ->
-            val utcTimeDur = durFromTime(time.time)
-            val offset = time.offset.delta
-            when (time.offset) {
-                mk_Offset(offset, PlusOrMinus.Plus) ->
-                    if (offset.dur <= utcTimeDur.dur) {
-                        mk_(durToTime(durSubtract(utcTimeDur, offset)), PlusOrMinus.None)
-                    } else {
-                        mk_(durToTime(durSubtract(durAdd(utcTimeDur, ONE_DAY), offset)), PlusOrMinus.Plus)
-                    }
-
-                mk_Offset(offset, PlusOrMinus.Minus) -> {
-                    val adjusted = durAdd(utcTimeDur, offset)
-                    if (adjusted.dur < ONE_DAY.dur) {
-                        mk_(durToTime(adjusted), PlusOrMinus.None)
-                    } else {
-                        mk_(durToTime(durSubtract(adjusted, ONE_DAY)), PlusOrMinus.Minus)
-                    }
-                }
-
-                else -> mk_(time.time, PlusOrMinus.None)
-            }
+    //TODO Write function
+    val subtractMonths: (DTG, nat) -> DTG = function(
+        command = { dtg: DTG, n: nat ->
+            dtg
         }
     )
 
-    val formatDTG: (DTG) -> String = function(
-        command = { dtg: DTG ->
-            formatDate(dtg.date) + "T" + formatTime(dtg.time)
-        }
+    //TODO Write function
+    val monthsBetween: (DTG, DTG) -> nat = function(
+        command = { starts: DTG, ends: DTG ->
+            2
+        },
+        pre = { starts, ends -> starts.dur <= ends.dur }
     )
 
-    val formatDTGInZone: (DTGInZone) -> String = function(
-        command = { dtg: DTGInZone ->
-            formatDate(dtg.date) + "T" + formatTimeInZone(dtg.time)
-        }
-    )
-
-    val formatDate: (Date) -> String = function(
-        command = { date: Date ->
-            String.format("%04d-%02d-%02d", date.year, date.month, date.day)
-        }
-    )
-
-    val formatTime: (Time) -> String = function(
-        command = { time: Time ->
-            val frac = if (time.millisecond == 0) {
-                ""
-            } else {
-                String.format(".%03d", time.millisecond)
-            }
-            String.format("%02d:%02d:%02d%s", time.hour, time.minute, time.second, frac)
-        }
-    )
-
-    val formatTimeInZone: (TimeInZone) -> String = function(
-        command = { time: TimeInZone ->
-            formatTime(time.time) + (
-                    if (time.offset.delta.dur == NO_DURATION.dur) {
-                        "Z"
-                    } else {
-                        formatOffset(time.offset)
-                    }
-                    )
-        }
-    )
-
-    val formatOffset: (Offset) -> String = function(
-        command = { offset: Offset ->
-            val hm = durToTime(offset.delta)
-            val sign = if (offset.pm == PlusOrMinus.Plus) {
-                "+"
-            } else if (offset.pm == PlusOrMinus.Minus) {
-                "-"
-            } else {
-                ""
-            }
-            String.format("%s%02d:%02d", sign, hm.hour, hm.minute)
-        }
-    )
-
-    val formatInterval: (Interval) -> String = function(
-        command = { interval: Interval ->
-            formatDTG(interval.begins) + "/" + formatDTG(interval.ends)
-        }
-    )
-
-    val formatDuration: (Duration) -> String = function(
-        command = { d: Duration ->
-            val numDays = durToDays(d)
-            val timeOfDay = durToTime(durModDays(d))
-            val item: (nat, Char) -> String = function(
-                command = { n: nat, c: Char ->
-                    if (n == 0) {
-                        ""
-                    } else {
-                        String.format("%d%s", n, c)
-                    }
-                }
-            )
-            val itemSec: (nat, nat) -> String = function(
-                command = { x: nat, y: nat ->
-                    String.format("%d.%03dS", x, y)
-                }
-            )
-
-            val date = item(numDays.toInt(), 'D')
-            val time = item(timeOfDay.hour, 'H') + item(timeOfDay.minute, 'M') +
-                    if (timeOfDay.millisecond == 0) {
-                        item(timeOfDay.second, 'S')
-                    } else {
-                        itemSec(timeOfDay.second, timeOfDay.millisecond)
-                    }
-            if (date == "" && time == "") {
-                "PT0S"
-            } else {
-                "P" + date + if (time == "") {
-                    ""
-                } else {
-                    "T" + time
-                }
-            }
-        }
+    //TODO Write function
+    val yearsBetween: (DTG, DTG) -> nat = function(
+        command = { starts: DTG, ends: DTG ->
+            2
+        },
+        pre = { starts, ends -> starts.dur <= ends.dur }
     )
 
     private val NO_DURATION: Duration = durFromMillis(0)
