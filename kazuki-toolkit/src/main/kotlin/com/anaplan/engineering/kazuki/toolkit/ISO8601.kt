@@ -24,7 +24,6 @@ object ISO8601 {
 
     // TODO Message Simon to confirm that he wants nanoseconds to be the smallest time period, instead of millisecond
 
-
     interface Duration {
 
         val dur: longNat
@@ -649,8 +648,6 @@ object ISO8601 {
 
     private val LAST_DTG: DTG by lazy { mk_DTG(LAST_DATE, LAST_TIME) }
 
-// FUNCTIONS
-
     // TODO Work out how to move these
     val isLeap: (Year) -> bool = function(
         command = { y: Year ->
@@ -703,7 +700,7 @@ object ISO8601 {
     // TODO Work out how to move these
     val durFromMinutes: (longNat) -> Duration = function(
         command = { mn: longNat ->
-            durFromSeconds((mn * SECONDS_PER_MINUTE).toLong())
+            durFromSeconds((mn * SECONDS_PER_MINUTE))
         },
 //        post = { mn, result -> result.functions.toMinutes() == mn }
     )
@@ -902,54 +899,157 @@ object ISO8601 {
         )
     }
 
-    //TODO Write function
     val isDate: (String) -> bool = function(
-        command = { str: String -> true }
+        command = { s: String ->
+            if (s.length != 10) {
+                false
+            } else if (s.elementAt(4) != '-' || s.elementAt(7) != '-') {
+                false
+            } else if (s.substring(0, 4).toIntOrNull() == null ||
+                s.substring(5, 7).toIntOrNull() == null ||
+                s.substring(8, 10).toIntOrNull() == null
+            ) {
+                false
+            } else if (s.substring(0, 4).toInt() < FIRST_YEAR || s.substring(0, 4).toInt() > LAST_YEAR) {
+                false
+            } else if (s.substring(5, 7).toInt() < 1 || s.substring(5, 7).toInt() > MONTHS_PER_YEAR) {
+                false
+            } else if (s.substring(8, 10).toInt() < 1 || s.substring(8, 10).toInt() > daysInMonth(
+                    s.substring(0, 4).toInt(), s.substring(5, 7).toInt()
+                )
+            ) {
+                false
+            } else {
+                true
+            }
+        }
     )
 
-    //TODO Write function
     val isDTG: (String) -> bool = function(
-        command = { str: String -> true }
+        command = { s: String ->
+            if (s.length != 19 && s.length != 23) {
+                false
+            } else if (s.elementAt(4) != '-' || s.elementAt(7) != '-' ||
+                s.elementAt(10) != 'T' || s.elementAt(13) != ':' || s.elementAt(16) != ':'
+            ) {
+                false
+            } else if (s.substring(0, 4).toIntOrNull() == null ||
+                s.substring(5, 7).toIntOrNull() == null ||
+                s.substring(8, 10).toIntOrNull() == null ||
+                s.substring(11, 13).toIntOrNull() == null ||
+                s.substring(14, 16).toIntOrNull() == null ||
+                s.substring(17, 19).toIntOrNull() == null
+            ) {
+                false
+            } else if (s.substring(0, 4).toInt() < FIRST_YEAR || s.substring(0, 4).toInt() > LAST_YEAR) {
+                false
+            } else if (s.substring(5, 7).toInt() < 1 || s.substring(5, 7).toInt() > MONTHS_PER_YEAR) {
+                false
+            } else if (s.substring(8, 10).toInt() < 1 || s.substring(8, 10).toInt() > daysInMonth(
+                    s.substring(0, 4).toInt(), s.substring(5, 7).toInt()
+                )
+            ) {
+                false
+            } else if (s.substring(11, 13).toInt() < 0 || s.substring(11, 13).toInt() > HOURS_PER_DAY) {
+                false
+            } else if (s.substring(14, 16).toInt() < 0 || s.substring(14, 16).toInt() > MINUTES_PER_HOUR) {
+                false
+            } else if (s.substring(17, 19).toInt() < 0 || s.substring(17, 19).toInt() > SECONDS_PER_MINUTE) {
+                false
+            } else if (s.length == 23) {
+                if (s.elementAt(19) != '.') {
+                    false
+                } else if (s.substring(20, 23).toIntOrNull() == null) {
+                    false
+                } else if (s.substring(20, 23).toInt() < 0 || s.substring(20, 23).toInt() > MILLIS_PER_SECOND) {
+                    false
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        }
     )
 
-    //TODO Write Function
     val strToDate: (String) -> Date = function(
-        command = { s: String -> mk_Date(1, 1, 1) },
+        command = { s: String ->
+            mk_Date(
+                s.substring(0, 4).toInt(),
+                s.substring(5, 7).toInt(),
+                s.substring(8, 10).toInt()
+            )
+        },
         pre = { s -> isDate(s) }
     )
 
-    //TODO Write Function
     val strToDTG: (String) -> DTG = function(
-        command = { s: String -> mk_DTG(mk_Date(1, 1, 1), mk_Time(1, 1, 1, 1)) },
+        command = { s: String ->
+            val ms = if (s.length == 19) {
+                0
+            } else {
+                s.substring(20, 23).toInt()
+            }
+            mk_DTG(
+                mk_Date(
+                    s.substring(0, 4).toInt(),
+                    s.substring(5, 7).toInt(),
+                    s.substring(8, 10).toInt()
+                ), mk_Time(
+                    s.substring(11, 13).toInt(),
+                    s.substring(14, 16).toInt(),
+                    s.substring(17, 19).toInt(),
+                    ms
+                )
+            )
+        },
         pre = { s -> isDTG(s) }
     )
 
-    //TODO Write function
     val addMonths: (DTG, nat) -> DTG = function(
         command = { dtg: DTG, n: nat ->
-            dtg
-        }
+            val nextM = ((dtg.date.month + n - 1) % MONTHS_PER_YEAR) + 1
+            val nextY = dtg.date.year + (dtg.date.month + n - 1) / MONTHS_PER_YEAR
+            if (dtg.date.day > daysInMonth(nextY, nextM)) {
+                mk_DTG(mk_Date(nextY, nextM, daysInMonth(nextY, nextM)), dtg.time)
+            } else {
+                mk_DTG(mk_Date(nextY, nextM, dtg.date.day), dtg.time)
+            }
+        },
     )
 
-    //TODO Write function
     val subtractMonths: (DTG, nat) -> DTG = function(
         command = { dtg: DTG, n: nat ->
-            dtg
+            val nextM = (dtg.date.month - n - 1).mod(MONTHS_PER_YEAR) + 1
+            val nextY = dtg.date.year + (dtg.date.month - n - 12) / MONTHS_PER_YEAR
+            if (dtg.date.day > daysInMonth(nextY, nextM)) {
+                mk_DTG(mk_Date(nextY, nextM, daysInMonth(nextY, nextM)), dtg.time)
+            } else {
+                mk_DTG(mk_Date(nextY, nextM, dtg.date.day), dtg.time)
+            }
         }
     )
 
-    //TODO Write function
     val monthsBetween: (DTG, DTG) -> nat = function(
         command = { starts: DTG, ends: DTG ->
-            2
+            var n = 0
+            while (addMonths(starts, n).dur <= ends.dur) {
+                n++
+            }
+            n - 1
         },
         pre = { starts, ends -> starts.dur <= ends.dur }
     )
 
-    //TODO Write function
     val yearsBetween: (DTG, DTG) -> nat = function(
         command = { starts: DTG, ends: DTG ->
-            2
+            if (durUpToMonth(starts.date.year, starts.date.month).dur + durFromDays(starts.date.day.toLong()).dur <=
+                durUpToMonth(ends.date.year, ends.date.month).dur + durFromDays(ends.date.day.toLong()).dur
+            ) {
+                ends.date.year - starts.date.year
+            } else {
+                ends.date.year - starts.date.year - 1
+            }
         },
         pre = { starts, ends -> starts.dur <= ends.dur }
     )

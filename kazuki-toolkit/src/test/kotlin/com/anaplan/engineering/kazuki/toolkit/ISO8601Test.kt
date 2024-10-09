@@ -6,6 +6,7 @@ import com.anaplan.engineering.kazuki.core.mk_Seq
 import com.anaplan.engineering.kazuki.core.mk_Set1
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.FIRST_DATE
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.FIRST_TIME
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.addMonths
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.daysInMonth
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.daysInYear
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.diff
@@ -19,6 +20,7 @@ import com.anaplan.engineering.kazuki.toolkit.ISO8601.durFromSeconds
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.durFromYear
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.durUpToMonth
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.durUpToYear
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.isDTG
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.isDate
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.isLeap
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.maxDTG
@@ -34,6 +36,9 @@ import com.anaplan.engineering.kazuki.toolkit.ISO8601.nextDateForDay
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.nextDateForYM
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.previousDateForDay
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.previousDateForYM
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.strToDTG
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.strToDate
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.subtractMonths
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.sumDuration
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.yearsBetween
 import com.anaplan.engineering.kazuki.toolkit.ISO8601_Module.mk_DTG
@@ -1380,14 +1385,57 @@ class ISO8601Test {
         assertEquals("PT1.001S", durFromSeconds(1).functions.add(durFromMillis(1)).functions.format())
     }
 
-    // TODO Write tests
     @Test
     fun addMonthsTest() {
+        assertEquals(
+            mk_DTG(mk_Date(1990, 3, 31), FIRST_TIME),
+            addMonths(
+                mk_DTG(mk_Date(1990, 1, 31), FIRST_TIME),
+                2
+            )
+        )
+        assertEquals(
+            mk_DTG(mk_Date(1990, 3, 28), mk_Time(3, 0, 0, 0)),
+            addMonths(
+                addMonths(
+                    mk_DTG(mk_Date(1990, 1, 31), mk_Time(3, 0, 0, 0)),
+                    1
+                ),
+                1
+            )
+        )
+        assertEquals(
+            mk_DTG(mk_Date(1991, 1, 30), FIRST_TIME),
+            addMonths(
+                mk_DTG(mk_Date(1990, 11, 30), FIRST_TIME),
+                2
+            )
+        )
     }
 
-    //TODO Write tests
     @Test
     fun subtractMonthsTest() {
+        assertEquals(
+            mk_DTG(mk_Date(1990, 2, 2), FIRST_TIME),
+            subtractMonths(
+                mk_DTG(mk_Date(1990, 4, 2), FIRST_TIME),
+                2
+            )
+        )
+        assertEquals(
+            mk_DTG(mk_Date(1990, 1, 28), mk_Time(3, 0, 0, 0)),
+            subtractMonths(
+                subtractMonths((mk_DTG(mk_Date(1990, 3, 31), mk_Time(3, 0, 0, 0))), 1),
+                1
+            )
+        )
+        assertEquals(
+            mk_DTG(mk_Date(1990, 11, 2), FIRST_TIME),
+            subtractMonths(
+                mk_DTG(mk_Date(1991, 1, 2), FIRST_TIME),
+                2
+            )
+        )
     }
 
     @Test
@@ -1441,25 +1489,35 @@ class ISO8601Test {
         )
     }
 
-    // TODO Write tests
     @Test
     fun isDateTest() {
         assertEquals(true, isDate("2018-04-01"))
+        assertEquals(false, isDate("2018/04/01"))
     }
 
-    // TODO Write tests
     @Test
     fun strToDateTest() {
+        assertEquals(mk_Date(2018, 4, 1), strToDate("2018-04-01"))
     }
 
-    // TODO Write tests
     @Test
     fun isDTGTest() {
+        assertEquals(true, isDTG("1990-01-01T00:00:00"))
+        assertEquals(true, isDTG("1990-01-01T00:00:00.000"))
+        assertEquals(false, isDTG("1990-01-01!00:00:00"))
+        assertEquals(false, isDTG("1990-01-01T00:00:00.FFF"))
     }
 
-    // TODO Write tests
     @Test
     fun strToDTGTest() {
+        assertEquals(
+            mk_DTG(mk_Date(1990, 1, 1), mk_Time(12, 23, 0, 0)),
+            strToDTG("1990-01-01T12:23:00")
+        )
+        assertEquals(
+            mk_DTG(mk_Date(1990, 1, 1), mk_Time(12, 23, 0, 1)),
+            strToDTG("1990-01-01T12:23:00.001")
+        )
     }
 }
 
