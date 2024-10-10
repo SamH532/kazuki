@@ -11,15 +11,6 @@ import com.anaplan.engineering.kazuki.toolkit.ISO8601.daysInMonth
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.daysInYear
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.diff
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.durDiff
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.durFromDays
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.durFromHours
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.durFromMillis
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.durFromMinutes
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.durFromMonth
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.durFromSeconds
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.durFromYear
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.durUpToMonth
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.durUpToYear
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.isDTG
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.isDate
 import com.anaplan.engineering.kazuki.toolkit.ISO8601.isLeap
@@ -138,38 +129,37 @@ class ISO8601Test {
         )
     }
 
-
     @Test
     fun dtgWithinTest() {
         assertEquals(
             true,
             mk_DTG(mk_Date(1989, 1, 3), FIRST_TIME).functions.within(
-                durFromDays(3), mk_DTG(mk_Date(1989, 1, 1), FIRST_TIME)
+                ISO8601.Duration.fromDays(3), mk_DTG(mk_Date(1989, 1, 1), FIRST_TIME)
             )
         )
         assertEquals(
             true,
             mk_DTG(mk_Date(1989, 12, 30), FIRST_TIME).functions.within(
-                durFromDays(3),
+                ISO8601.Duration.fromDays(3),
                 mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
             )
         )
         assertEquals(
             true,
             mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME).functions.within(
-                durFromDays(0), mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
+                ISO8601.Duration.fromDays(0), mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
             )
         )
         assertEquals(
             false,
             mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME).functions.within(
-                durFromDays(3), mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
+                ISO8601.Duration.fromDays(3), mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
             )
         )
         assertEquals(
             false,
             mk_DTG(mk_Date(1989, 12, 27), FIRST_TIME).functions.within(
-                durFromDays(3), mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
+                ISO8601.Duration.fromDays(3), mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
             )
         )
     }
@@ -433,22 +423,22 @@ class ISO8601Test {
     fun addTest() {
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 5), FIRST_TIME),
-            mk_DTG(mk_Date(1990, 1, 2), FIRST_TIME).functions.add(durFromDays(3))
+            mk_DTG(mk_Date(1990, 1, 2), FIRST_TIME).functions.add(ISO8601.Duration.fromDays(3))
         )
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 2), mk_Time(5, 20, 0, 0)),
             mk_DTG(mk_Date(1990, 1, 2), mk_Time(2, 0, 0, 0)).functions.add(
-                durFromHours(3).functions.add(durFromMinutes(20))
+                ISO8601.Duration.fromHours(3).functions.add(ISO8601.Duration.fromMinutes(20))
             )
         )
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 5), mk_Time(5, 20, 10, 5)),
             mk_DTG(mk_Date(1990, 1, 1), mk_Time(2, 0, 0, 0)).functions.add(
-                durFromDays(4).functions.add(
-                    durFromHours(3).functions.add(
-                        durFromMinutes(20).functions.add(
-                            durFromSeconds(10).functions.add(
-                                durFromMillis(5)
+                ISO8601.Duration.fromDays(4).functions.add(
+                    ISO8601.Duration.fromHours(3).functions.add(
+                        ISO8601.Duration.fromMinutes(20).functions.add(
+                            ISO8601.Duration.fromSeconds(10).functions.add(
+                                ISO8601.Duration.fromMillis(5)
                             )
                         )
                     )
@@ -462,24 +452,24 @@ class ISO8601Test {
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 2), FIRST_TIME),
             mk_DTG(mk_Date(1990, 1, 5), FIRST_TIME).functions.subtract(
-                durFromDays(3)
+                ISO8601.Duration.fromDays(3)
             )
         )
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 5), mk_Time(3, 20, 0, 0)),
             mk_DTG(mk_Date(1990, 1, 5), mk_Time(6, 40, 0, 0)).functions.subtract(
-                durFromHours(3).functions.add(durFromMinutes(20))
+                ISO8601.Duration.fromHours(3).functions.add(ISO8601.Duration.fromMinutes(20))
             )
         )
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 2), mk_Time(2, 20, 20, 5)),
 
             mk_DTG(mk_Date(1990, 1, 6), mk_Time(5, 40, 30, 10)).functions.subtract(
-                durFromDays(4).functions.add(
-                    durFromHours(3).functions.add(
-                        durFromMinutes(20).functions.add(
-                            durFromSeconds(10).functions.add(
-                                durFromMillis(5)
+                ISO8601.Duration.fromDays(4).functions.add(
+                    ISO8601.Duration.fromHours(3).functions.add(
+                        ISO8601.Duration.fromMinutes(20).functions.add(
+                            ISO8601.Duration.fromSeconds(10).functions.add(
+                                ISO8601.Duration.fromMillis(5)
                             )
                         )
                     )
@@ -491,11 +481,11 @@ class ISO8601Test {
     @Test
     fun diffTest() {
         assertEquals(
-            durFromDays(5).functions.add(
-                durFromHours(5).functions.add(
-                    durFromMinutes(5).functions.add(
-                        durFromSeconds(5).functions.add(
-                            durFromMillis(5)
+            ISO8601.Duration.fromDays(5).functions.add(
+                ISO8601.Duration.fromHours(5).functions.add(
+                    ISO8601.Duration.fromMinutes(5).functions.add(
+                        ISO8601.Duration.fromSeconds(5).functions.add(
+                            ISO8601.Duration.fromMillis(5)
                         )
                     )
                 )
@@ -506,11 +496,11 @@ class ISO8601Test {
             )
         )
         assertEquals(
-            durFromDays(5).functions.add(
-                durFromHours(5).functions.add(
-                    durFromMinutes(5).functions.add(
-                        durFromSeconds(5).functions.add(
-                            durFromMillis(5)
+            ISO8601.Duration.fromDays(5).functions.add(
+                ISO8601.Duration.fromHours(5).functions.add(
+                    ISO8601.Duration.fromMinutes(5).functions.add(
+                        ISO8601.Duration.fromSeconds(5).functions.add(
+                            ISO8601.Duration.fromMillis(5)
                         )
                     )
                 )
@@ -521,11 +511,11 @@ class ISO8601Test {
             )
         )
         assertEquals(
-            durFromDays(5).functions.add(
-                durFromHours(5).functions.add(
-                    durFromMinutes(5).functions.add(
-                        durFromSeconds(5).functions.add(
-                            durFromMillis(5)
+            ISO8601.Duration.fromDays(5).functions.add(
+                ISO8601.Duration.fromHours(5).functions.add(
+                    ISO8601.Duration.fromMinutes(5).functions.add(
+                        ISO8601.Duration.fromSeconds(5).functions.add(
+                            ISO8601.Duration.fromMillis(5)
                         )
                     )
                 )
@@ -536,11 +526,11 @@ class ISO8601Test {
             )
         )
         assertEquals(
-            durFromDays(5).functions.add(
-                durFromHours(5).functions.add(
-                    durFromMinutes(5).functions.add(
-                        durFromSeconds(5).functions.add(
-                            durFromMillis(5)
+            ISO8601.Duration.fromDays(5).functions.add(
+                ISO8601.Duration.fromHours(5).functions.add(
+                    ISO8601.Duration.fromMinutes(5).functions.add(
+                        ISO8601.Duration.fromSeconds(5).functions.add(
+                            ISO8601.Duration.fromMillis(5)
                         )
                     )
                 )
@@ -554,39 +544,72 @@ class ISO8601Test {
 
     @Test
     fun durAddTest() {
-        assertEquals(durFromDays(5), durFromDays(2).functions.add(durFromDays(3)))
-        assertEquals(durFromDays(2), durFromDays(2).functions.add(durFromDays(0)))
+        assertEquals(
+            ISO8601.Duration.fromDays(5),
+            ISO8601.Duration.fromDays(2).functions.add(ISO8601.Duration.fromDays(3))
+        )
+        assertEquals(
+            ISO8601.Duration.fromDays(2),
+            ISO8601.Duration.fromDays(2).functions.add(ISO8601.Duration.fromDays(0))
+        )
     }
 
     @Test
     fun durSubtractTest() {
-        assertEquals(durFromDays(5), durFromDays(8).functions.subtract(durFromDays(3)))
-        assertFailsWith<PreconditionFailure> { durFromDays(2).functions.subtract(durFromDays(3)) }
-        assertEquals(durFromDays(8), durFromDays(8).functions.subtract(durFromDays(0)))
-        assertEquals(durFromDays(0), durFromDays(8).functions.subtract(durFromDays(8)))
+        assertEquals(
+            ISO8601.Duration.fromDays(5),
+            ISO8601.Duration.fromDays(8).functions.subtract(ISO8601.Duration.fromDays(3))
+        )
+        assertFailsWith<PreconditionFailure> {
+            ISO8601.Duration.fromDays(2).functions.subtract(
+                ISO8601.Duration.fromDays(
+                    3
+                )
+            )
+        }
+        assertEquals(
+            ISO8601.Duration.fromDays(8),
+            ISO8601.Duration.fromDays(8).functions.subtract(ISO8601.Duration.fromDays(0))
+        )
+        assertEquals(
+            ISO8601.Duration.fromDays(0),
+            ISO8601.Duration.fromDays(8).functions.subtract(ISO8601.Duration.fromDays(8))
+        )
     }
 
     @Test
     fun durMultiplyTest() {
-        assertEquals(durFromDays(10), durFromDays(2).functions.multiply(5))
-        assertEquals(durFromDays(1).functions.add(durFromHours(1)), durFromHours(5).functions.multiply(5))
-        assertEquals(durFromDays(5000000), durFromDays(1000000).functions.multiply(5))
+        assertEquals(ISO8601.Duration.fromDays(10), ISO8601.Duration.fromDays(2).functions.multiply(5))
+        assertEquals(
+            ISO8601.Duration.fromDays(1).functions.add(ISO8601.Duration.fromHours(1)),
+            ISO8601.Duration.fromHours(5).functions.multiply(5)
+        )
+        assertEquals(ISO8601.Duration.fromDays(5000000), ISO8601.Duration.fromDays(1000000).functions.multiply(5))
     }
 
     @Test
     fun durDivideTest() {
-        assertEquals(durFromDays(2), durFromDays(10).functions.divide(5))
-        assertEquals(durFromHours(12), durFromDays(10).functions.divide(20))
-        assertEquals(durFromDays(1000000), durFromDays(5000000).functions.divide(5))
+        assertEquals(ISO8601.Duration.fromDays(2), ISO8601.Duration.fromDays(10).functions.divide(5))
+        assertEquals(ISO8601.Duration.fromHours(12), ISO8601.Duration.fromDays(10).functions.divide(20))
+        assertEquals(ISO8601.Duration.fromDays(1000000), ISO8601.Duration.fromDays(5000000).functions.divide(5))
     }
 
     @Test
     fun durDiffTest() {
-        assertEquals(durFromDays(5), durDiff(durFromDays(10), durFromDays(5)))
-        assertEquals(durFromDays(5), durDiff(durFromDays(5), durFromDays(10)))
-        assertEquals(durFromDays(0), durDiff(durFromDays(10), durFromDays(10)))
-        assertEquals(durFromDays(1999999995), durDiff(durFromDays(2000000000), durFromDays(5)))
-        assertEquals(durFromMillis(15), durDiff(durFromMillis(20), durFromMillis(5)))
+        assertEquals(ISO8601.Duration.fromDays(5), durDiff(ISO8601.Duration.fromDays(10), ISO8601.Duration.fromDays(5)))
+        assertEquals(ISO8601.Duration.fromDays(5), durDiff(ISO8601.Duration.fromDays(5), ISO8601.Duration.fromDays(10)))
+        assertEquals(
+            ISO8601.Duration.fromDays(0),
+            durDiff(ISO8601.Duration.fromDays(10), ISO8601.Duration.fromDays(10))
+        )
+        assertEquals(
+            ISO8601.Duration.fromDays(1999999995),
+            durDiff(ISO8601.Duration.fromDays(2000000000), ISO8601.Duration.fromDays(5))
+        )
+        assertEquals(
+            ISO8601.Duration.fromMillis(15),
+            durDiff(ISO8601.Duration.fromMillis(20), ISO8601.Duration.fromMillis(5))
+        )
     }
 
     @Test
@@ -598,9 +621,9 @@ class ISO8601Test {
 
     @Test
     fun durFromMillisTest() {
-        assertEquals(12, durFromMillis(12).dur)
-        assertEquals(0, durFromMillis(0).dur)
-        assertEquals(2000000000, durFromMillis(2000000000).dur)
+        assertEquals(12, ISO8601.Duration.fromMillis(12).dur)
+        assertEquals(0, ISO8601.Duration.fromMillis(0).dur)
+        assertEquals(2000000000, ISO8601.Duration.fromMillis(2000000000).dur)
     }
 
     @Test
@@ -612,9 +635,9 @@ class ISO8601Test {
 
     @Test
     fun durFromSecondsTest() {
-        assertEquals(60000, durFromSeconds(60).dur)
-        assertEquals(0, durFromSeconds(0).dur)
-        assertEquals(2000000000, durFromSeconds(2000000).dur)
+        assertEquals(60000, ISO8601.Duration.fromSeconds(60).dur)
+        assertEquals(0, ISO8601.Duration.fromSeconds(0).dur)
+        assertEquals(2000000000, ISO8601.Duration.fromSeconds(2000000).dur)
     }
 
     @Test
@@ -626,18 +649,24 @@ class ISO8601Test {
 
     @Test
     fun durFromMinutesTest() {
-        assertEquals(3600000, durFromMinutes(60).dur)
-        assertEquals(0, durFromMinutes(0).dur)
-        assertEquals(120000000000, durFromMinutes(2000000).dur)
+        assertEquals(3600000, ISO8601.Duration.fromMinutes(60).dur)
+        assertEquals(0, ISO8601.Duration.fromMinutes(0).dur)
+        assertEquals(120000000000, ISO8601.Duration.fromMinutes(2000000).dur)
     }
 
     @Test
     fun durModMinutesTest() {
-        assertEquals(durFromSeconds(10), durFromMinutes(5).functions.add(durFromSeconds(10)).functions.modMinutes())
-        assertEquals(durFromSeconds(10), durFromMinutes(0).functions.add(durFromSeconds(10)).functions.modMinutes())
         assertEquals(
-            durFromSeconds(10),
-            durFromMinutes(2000000).functions.add(durFromSeconds(10)).functions.modMinutes()
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromMinutes(5).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modMinutes()
+        )
+        assertEquals(
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromMinutes(0).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modMinutes()
+        )
+        assertEquals(
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromMinutes(2000000).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modMinutes()
         )
     }
 
@@ -646,20 +675,30 @@ class ISO8601Test {
         assertEquals(10, mk_Duration(36000000).functions.toHours())
         assertEquals(0, mk_Duration(0).functions.toHours())
         assertEquals(2000, mk_Duration(7200000000).functions.toHours())
+        assertEquals(876600, ISO8601.Duration.durUpToYear(100).functions.toHours())
     }
 
     @Test
     fun durFromHoursTest() {
-        assertEquals(216000000, durFromHours(60).dur)
-        assertEquals(0, durFromHours(0).dur)
-        assertEquals(7200000000, durFromHours(2000).dur)
+        assertEquals(216000000, ISO8601.Duration.fromHours(60).dur)
+        assertEquals(0, ISO8601.Duration.fromHours(0).dur)
+        assertEquals(7200000000, ISO8601.Duration.fromHours(2000).dur)
     }
 
     @Test
     fun durModHoursTest() {
-        assertEquals(durFromSeconds(10), durFromHours(5).functions.add(durFromSeconds(10)).functions.modHours())
-        assertEquals(durFromSeconds(10), durFromHours(0).functions.add(durFromSeconds(10)).functions.modHours())
-        assertEquals(durFromSeconds(10), durFromHours(2000000).functions.add(durFromSeconds(10)).functions.modHours())
+        assertEquals(
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromHours(5).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modHours()
+        )
+        assertEquals(
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromHours(0).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modHours()
+        )
+        assertEquals(
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromHours(2000000).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modHours()
+        )
     }
 
     @Test
@@ -672,9 +711,9 @@ class ISO8601Test {
 
     @Test
     fun durFromDaysTest() {
-        assertEquals(864000000, durFromDays(10).dur)
-        assertEquals(0, durFromDays(0).dur)
-        assertEquals(172800000000, durFromDays(2000).dur)
+        assertEquals(864000000, ISO8601.Duration.fromDays(10).dur)
+        assertEquals(0, ISO8601.Duration.fromDays(0).dur)
+        assertEquals(172800000000, ISO8601.Duration.fromDays(2000).dur)
 
     }
 
@@ -708,131 +747,138 @@ class ISO8601Test {
 
     @Test
     fun durModDaysTest() {
-        assertEquals(durFromSeconds(10), durFromDays(5).functions.add(durFromSeconds(10)).functions.modDays())
-        assertEquals(durFromSeconds(10), durFromDays(0).functions.add(durFromSeconds(10)).functions.modDays())
-        assertEquals(durFromSeconds(10), durFromDays(200000).functions.add(durFromSeconds(10)).functions.modDays())
+        assertEquals(
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromDays(5).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modDays()
+        )
+        assertEquals(
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromDays(0).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modDays()
+        )
+        assertEquals(
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromDays(200000).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modDays()
+        )
     }
 
     @Test
     fun toMonthTest() {
-        assertEquals(0, durFromDays(30).functions.toMonth(1990))
-        assertEquals(1, durFromDays(31).functions.toMonth(1990))
-        assertEquals(0, durFromDays(0).functions.toMonth(1990))
-        assertEquals(11, durFromDays(364).functions.toMonth(1990))
+        assertEquals(0, ISO8601.Duration.fromDays(30).functions.toMonth(1990))
+        assertEquals(1, ISO8601.Duration.fromDays(31).functions.toMonth(1990))
+        assertEquals(0, ISO8601.Duration.fromDays(0).functions.toMonth(1990))
+        assertEquals(11, ISO8601.Duration.fromDays(364).functions.toMonth(1990))
     }
 
     @Test
     fun durFromMonthTest() {
-        assertEquals(durFromDays(31), durFromMonth(1990, 1))
-        assertEquals(durFromDays(28), durFromMonth(1990, 2))
-        assertEquals(durFromDays(30), durFromMonth(1990, 9))
+        assertEquals(ISO8601.Duration.fromDays(31), ISO8601.Duration.fromMonth(1990, 1))
+        assertEquals(ISO8601.Duration.fromDays(28), ISO8601.Duration.fromMonth(1990, 2))
+        assertEquals(ISO8601.Duration.fromDays(30), ISO8601.Duration.fromMonth(1990, 9))
     }
 
     @Test
     fun durUpToMonthTest() {
-        assertEquals(durFromDays(90), durUpToMonth(1990, 4))
-        assertEquals(durFromDays(59), durUpToMonth(1990, 3))
+        assertEquals(ISO8601.Duration.fromDays(90), ISO8601.Duration.durUpToMonth(1990, 4))
+        assertEquals(ISO8601.Duration.fromDays(59), ISO8601.Duration.durUpToMonth(1990, 3))
     }
 
     @Test
     fun toYearTest() {
-        assertEquals(0, durFromDays(0).functions.toYear(1990))
-        assertEquals(2, durFromDays(800).functions.toYear(1990))
+        assertEquals(0, ISO8601.Duration.fromDays(0).functions.toYear(1990))
+        assertEquals(2, ISO8601.Duration.fromDays(800).functions.toYear(1990))
     }
 
     @Test
     fun durFromYearTest() {
-        assertEquals(durFromDays(365), durFromYear(1990))
-        assertEquals(durFromDays(366), durFromYear(2020))
+        assertEquals(ISO8601.Duration.fromDays(365), ISO8601.Duration.fromYear(1990))
+        assertEquals(ISO8601.Duration.fromDays(366), ISO8601.Duration.fromYear(2020))
     }
 
     @Test
     fun durUpToYearTest() {
-        assertEquals(durFromDays(366), durUpToYear(1))
+        assertEquals(ISO8601.Duration.fromDays(366), ISO8601.Duration.durUpToYear(1))
     }
 
     @Test
     fun toDTGTest() {
         assertEquals(
             mk_DTG(mk_Date(0, 1, 6), mk_Time(0, 0, 0, 0)),
-            durFromDays(5).functions.toDTG()
+            ISO8601.Duration.fromDays(5).functions.toDTG()
         )
         assertEquals(
             mk_DTG(mk_Date(0, 1, 1), mk_Time(0, 0, 0, 0)),
-            durFromDays(0).functions.toDTG()
+            ISO8601.Duration.fromDays(0).functions.toDTG()
         )
         assertEquals(
             mk_DTG(mk_Date(0, 2, 7), mk_Time(0, 0, 0, 0)),
-            durFromDays(37).functions.toDTG()
+            ISO8601.Duration.fromDays(37).functions.toDTG()
         )
     }
-
 
     @Test
     fun dtgToDurTest() {
         assertEquals(
-            durFromDays(6),
+            ISO8601.Duration.fromDays(6),
 
             mk_DTG(mk_Date(0, 1, 7), mk_Time(0, 0, 0, 0)).functions.toDur()
 
         )
         assertEquals(
-            durFromDays(0),
+            ISO8601.Duration.fromDays(0),
             mk_DTG(mk_Date(0, 1, 1), mk_Time(0, 0, 0, 0)).functions.toDur()
         )
 
         assertEquals(
-            durFromDays(37),
+            ISO8601.Duration.fromDays(37),
             mk_DTG(mk_Date(0, 2, 7), mk_Time(0, 0, 0, 0)).functions.toDur()
         )
     }
 
     @Test
     fun toDateTest() {
-        assertEquals(mk_Date(0, 1, 4), durFromDays(3).functions.toDate())
-        assertEquals(mk_Date(0, 1, 1), durFromDays(0).functions.toDate())
+        assertEquals(mk_Date(0, 1, 4), ISO8601.Duration.fromDays(3).functions.toDate())
+        assertEquals(mk_Date(0, 1, 1), ISO8601.Duration.fromDays(0).functions.toDate())
     }
 
     @Test
     fun durFromDateTest() {
-        assertEquals(durFromDays(3), mk_Date(0, 1, 4).functions.toDur())
-        assertEquals(durFromDays(0), mk_Date(0, 1, 1).functions.toDur())
+        assertEquals(ISO8601.Duration.fromDays(3), mk_Date(0, 1, 4).functions.toDur())
+        assertEquals(ISO8601.Duration.fromDays(0), mk_Date(0, 1, 1).functions.toDur())
     }
-
 
     @Test
     fun toTimeTest() {
-        assertEquals(mk_Time(3, 0, 0, 0), durFromHours(3).functions.toTime())
-        assertEquals(mk_Time(0, 0, 0, 0), durFromHours(0).functions.toTime())
+        assertEquals(mk_Time(3, 0, 0, 0), ISO8601.Duration.fromHours(3).functions.toTime())
+        assertEquals(mk_Time(0, 0, 0, 0), ISO8601.Duration.fromHours(0).functions.toTime())
     }
 
     @Test
     fun durFromTimeTest() {
-        assertEquals(durFromHours(4), mk_Time(4, 0, 0, 0).functions.toDur())
-        assertEquals(durFromHours(0), mk_Time(0, 0, 0, 0).functions.toDur())
+        assertEquals(ISO8601.Duration.fromHours(4), mk_Time(4, 0, 0, 0).functions.toDur())
+        assertEquals(ISO8601.Duration.fromHours(0), mk_Time(0, 0, 0, 0).functions.toDur())
     }
 
     @Test
     fun durFromTimeInZoneTest() {
         assertEquals(
-            durFromHours(4),
+            ISO8601.Duration.fromHours(4),
             mk_TimeInZone(
                 mk_Time(3, 0, 0, 0),
-                mk_Offset(durFromHours(1), ISO8601.PlusOrMinus.Minus)
+                mk_Offset(ISO8601.Duration.fromHours(1), ISO8601.PlusOrMinus.Minus)
             ).functions.toDur()
         )
         assertEquals(
-            durFromHours(2),
+            ISO8601.Duration.fromHours(2),
             mk_TimeInZone(
                 mk_Time(3, 0, 0, 0),
-                mk_Offset(durFromHours(1), ISO8601.PlusOrMinus.Plus)
+                mk_Offset(ISO8601.Duration.fromHours(1), ISO8601.PlusOrMinus.Plus)
             ).functions.toDur()
         )
         assertEquals(
-            durFromHours(0),
+            ISO8601.Duration.fromHours(0),
             mk_TimeInZone(
                 mk_Time(0, 0, 0, 0),
-                mk_Offset(durFromHours(0), ISO8601.PlusOrMinus.None)
+                mk_Offset(ISO8601.Duration.fromHours(0), ISO8601.PlusOrMinus.None)
             ).functions.toDur()
         )
     }
@@ -840,14 +886,14 @@ class ISO8601Test {
     @Test
     fun durFromIntervalTest() {
         assertEquals(
-            durFromDays(5),
+            ISO8601.Duration.fromDays(5),
             mk_Interval(
                 mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
                 mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             ).functions.toDur()
         )
         assertEquals(
-            durFromHours(2),
+            ISO8601.Duration.fromHours(2),
             mk_Interval(
                 mk_DTG(mk_Date(1990, 1, 1), mk_Time(1, 0, 0, 0)),
                 mk_DTG(mk_Date(1990, 1, 1), mk_Time(3, 0, 0, 0))
@@ -860,13 +906,13 @@ class ISO8601Test {
         assertEquals(
             true,
             mk_DTG(mk_Date(0, 1, 1), mk_Time(10, 0, 0, 0)).functions.finestGranularity(
-                durFromHours(1)
+                ISO8601.Duration.fromHours(1)
             )
         )
         assertEquals(
             false,
             mk_DTG(mk_Date(0, 1, 1), mk_Time(10, 0, 0, 0)).functions.finestGranularity(
-                durFromHours(3)
+                ISO8601.Duration.fromHours(3)
             )
         )
     }
@@ -879,7 +925,7 @@ class ISO8601Test {
                 mk_DTG(mk_Date(1990, 1, 1), mk_Time(1, 0, 0, 0)),
                 mk_DTG(mk_Date(1990, 1, 1), mk_Time(3, 0, 0, 0))
             ).functions.finestGranularityI(
-                durFromHours(1)
+                ISO8601.Duration.fromHours(1)
 
             )
         )
@@ -889,7 +935,7 @@ class ISO8601Test {
                 mk_DTG(mk_Date(1990, 1, 1), mk_Time(1, 0, 0, 0)),
                 mk_DTG(mk_Date(1990, 1, 1), mk_Time(10, 0, 0, 0))
             ).functions.finestGranularityI(
-                durFromHours(2)
+                ISO8601.Duration.fromHours(2)
             )
         )
 
@@ -1010,13 +1056,13 @@ class ISO8601Test {
             )
         )
         assertEquals(
-            mk_Date(9999, 1, 1),
+            mk_Date(3000, 1, 1),
             maxDate(
                 mk_Set1(
                     mk_Date(0, 1, 1),
                     mk_Date(1990, 1, 1),
                     mk_Date(300, 1, 1),
-                    mk_Date(9999, 1, 1)
+                    mk_Date(3000, 1, 1)
                 )
             )
         )
@@ -1078,24 +1124,24 @@ class ISO8601Test {
     @Test
     fun minDurationTest() {
         assertEquals(
-            durFromMinutes(40),
+            ISO8601.Duration.fromMinutes(40),
             minDuration(
                 mk_Set1(
-                    durFromHours(3),
-                    durFromMinutes(40),
-                    durFromDays(2),
-                    durFromHours(5)
+                    ISO8601.Duration.fromHours(3),
+                    ISO8601.Duration.fromMinutes(40),
+                    ISO8601.Duration.fromDays(2),
+                    ISO8601.Duration.fromHours(5)
                 )
             )
         )
         assertEquals(
-            durFromHours(0),
+            ISO8601.Duration.fromHours(0),
             minDuration(
                 mk_Set1(
-                    durFromHours(0),
-                    durFromMinutes(14),
-                    durFromDays(2),
-                    durFromHours(23)
+                    ISO8601.Duration.fromHours(0),
+                    ISO8601.Duration.fromMinutes(14),
+                    ISO8601.Duration.fromDays(2),
+                    ISO8601.Duration.fromHours(23)
                 )
             )
         )
@@ -1104,24 +1150,24 @@ class ISO8601Test {
     @Test
     fun maxDurationTest() {
         assertEquals(
-            durFromDays(2),
+            ISO8601.Duration.fromDays(2),
             maxDuration(
                 mk_Set1(
-                    durFromHours(3),
-                    durFromMinutes(40),
-                    durFromDays(2),
-                    durFromHours(5)
+                    ISO8601.Duration.fromHours(3),
+                    ISO8601.Duration.fromMinutes(40),
+                    ISO8601.Duration.fromDays(2),
+                    ISO8601.Duration.fromHours(5)
                 )
             )
         )
         assertEquals(
-            durFromDays(2000000000),
+            ISO8601.Duration.fromDays(2000000000),
             maxDuration(
                 mk_Set1(
-                    durFromHours(0),
-                    durFromMinutes(14),
-                    durFromDays(2000000000),
-                    durFromHours(23)
+                    ISO8601.Duration.fromHours(0),
+                    ISO8601.Duration.fromMinutes(14),
+                    ISO8601.Duration.fromDays(2000000000),
+                    ISO8601.Duration.fromHours(23)
                 )
             )
         )
@@ -1133,10 +1179,10 @@ class ISO8601Test {
             mk_Duration(204000000),
             sumDuration(
                 mk_Seq(
-                    durFromHours(3),
-                    durFromMinutes(40),
-                    durFromDays(2),
-                    durFromHours(5)
+                    ISO8601.Duration.fromHours(3),
+                    ISO8601.Duration.fromMinutes(40),
+                    ISO8601.Duration.fromDays(2),
+                    ISO8601.Duration.fromHours(5)
                 )
             )
         )
@@ -1144,9 +1190,9 @@ class ISO8601Test {
             mk_Duration(0),
             sumDuration(
                 mk_Seq(
-                    durFromHours(0),
-                    durFromMinutes(0),
-                    durFromDays(0)
+                    ISO8601.Duration.fromHours(0),
+                    ISO8601.Duration.fromMinutes(0),
+                    ISO8601.Duration.fromDays(0)
                 )
             )
         )
@@ -1203,7 +1249,7 @@ class ISO8601Test {
                 mk_Date(1990, 1, 1),
                 mk_TimeInZone(
                     mk_Time(5, 0, 0, 0),
-                    mk_Offset(durFromHours(2), ISO8601.PlusOrMinus.Plus)
+                    mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Plus)
                 )
             ).functions.normalise()
         )
@@ -1213,7 +1259,7 @@ class ISO8601Test {
                 mk_Date(1990, 1, 1),
                 mk_TimeInZone(
                     mk_Time(5, 0, 0, 0),
-                    mk_Offset(durFromHours(2), ISO8601.PlusOrMinus.Minus)
+                    mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Minus)
                 )
             ).functions.normalise()
         )
@@ -1223,7 +1269,7 @@ class ISO8601Test {
                 mk_Date(1990, 1, 1),
                 mk_TimeInZone(
                     mk_Time(5, 0, 0, 0),
-                    mk_Offset(durFromHours(0), ISO8601.PlusOrMinus.Minus)
+                    mk_Offset(ISO8601.Duration.fromHours(0), ISO8601.PlusOrMinus.Minus)
                 )
             ).functions.normalise()
         )
@@ -1235,36 +1281,36 @@ class ISO8601Test {
             mk_(mk_Time(7, 23, 12, 0), ISO8601.PlusOrMinus.None),
             mk_TimeInZone(
                 mk_Time(5, 23, 12, 0),
-                mk_Offset(durFromHours(2), ISO8601.PlusOrMinus.Minus)
-            ).functions.normaliseTime()
+                mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Minus)
+            ).functions.normalise()
         )
         assertEquals(
             mk_(mk_Time(1, 23, 12, 0), ISO8601.PlusOrMinus.Minus),
             mk_TimeInZone(
                 mk_Time(23, 23, 12, 0),
-                mk_Offset(durFromHours(2), ISO8601.PlusOrMinus.Minus)
-            ).functions.normaliseTime()
+                mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Minus)
+            ).functions.normalise()
         )
         assertEquals(
             mk_(mk_Time(23, 23, 12, 0), ISO8601.PlusOrMinus.None),
             mk_TimeInZone(
                 mk_Time(23, 23, 12, 0),
-                mk_Offset(durFromHours(0), ISO8601.PlusOrMinus.Minus)
-            ).functions.normaliseTime()
+                mk_Offset(ISO8601.Duration.fromHours(0), ISO8601.PlusOrMinus.Minus)
+            ).functions.normalise()
         )
         assertEquals(
             mk_(mk_Time(3, 23, 12, 0), ISO8601.PlusOrMinus.None),
             mk_TimeInZone(
                 mk_Time(5, 23, 12, 0),
-                mk_Offset(durFromHours(2), ISO8601.PlusOrMinus.Plus)
-            ).functions.normaliseTime()
+                mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Plus)
+            ).functions.normalise()
         )
         assertEquals(
             mk_(mk_Time(23, 23, 12, 0), ISO8601.PlusOrMinus.Plus),
             mk_TimeInZone(
                 mk_Time(1, 23, 12, 0),
-                mk_Offset(durFromHours(2), ISO8601.PlusOrMinus.Plus)
-            ).functions.normaliseTime()
+                mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Plus)
+            ).functions.normalise()
         )
 
     }
@@ -1293,7 +1339,7 @@ class ISO8601Test {
                 mk_Date(1990, 1, 1),
                 mk_TimeInZone(
                     mk_Time(3, 0, 0, 0),
-                    mk_Offset(durFromHours(2), ISO8601.PlusOrMinus.Plus)
+                    mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Plus)
                 )
             ).functions.format()
         )
@@ -1303,7 +1349,7 @@ class ISO8601Test {
                 mk_Date(1990, 1, 1),
                 mk_TimeInZone(
                     mk_Time(3, 0, 0, 0),
-                    mk_Offset(durFromHours(2), ISO8601.PlusOrMinus.Minus)
+                    mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Minus)
                 )
             ).functions.format()
         )
@@ -1313,7 +1359,7 @@ class ISO8601Test {
                 mk_Date(1990, 1, 1),
                 mk_TimeInZone(
                     mk_Time(3, 0, 0, 0),
-                    mk_Offset(durFromHours(0), ISO8601.PlusOrMinus.None)
+                    mk_Offset(ISO8601.Duration.fromHours(0), ISO8601.PlusOrMinus.None)
                 )
             ).functions.format()
         )
@@ -1338,21 +1384,21 @@ class ISO8601Test {
             "03:00:00+02:00",
             mk_TimeInZone(
                 mk_Time(3, 0, 0, 0),
-                mk_Offset(durFromHours(2), ISO8601.PlusOrMinus.Plus)
+                mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Plus)
             ).functions.format()
         )
         assertEquals(
             "03:00:00-02:00",
             mk_TimeInZone(
                 mk_Time(3, 0, 0, 0),
-                mk_Offset(durFromHours(2), ISO8601.PlusOrMinus.Minus)
+                mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Minus)
             ).functions.format()
         )
         assertEquals(
             "03:00:00Z",
             mk_TimeInZone(
                 mk_Time(3, 0, 0, 0),
-                mk_Offset(durFromHours(0), ISO8601.PlusOrMinus.None)
+                mk_Offset(ISO8601.Duration.fromHours(0), ISO8601.PlusOrMinus.None)
             ).functions.format()
         )
     }
@@ -1379,10 +1425,13 @@ class ISO8601Test {
     fun formatDurationTest() {
         assertEquals(
             "P2DT6H",
-            durFromHours(6).functions.add(durFromDays(2)).functions.format()
+            ISO8601.Duration.fromHours(6).functions.add(ISO8601.Duration.fromDays(2)).functions.format()
         )
-        assertEquals("PT0S", durFromHours(0).functions.format())
-        assertEquals("PT1.001S", durFromSeconds(1).functions.add(durFromMillis(1)).functions.format())
+        assertEquals("PT0S", ISO8601.Duration.fromHours(0).functions.format())
+        assertEquals(
+            "PT1.001S",
+            ISO8601.Duration.fromSeconds(1).functions.add(ISO8601.Duration.fromMillis(1)).functions.format()
+        )
     }
 
     @Test
