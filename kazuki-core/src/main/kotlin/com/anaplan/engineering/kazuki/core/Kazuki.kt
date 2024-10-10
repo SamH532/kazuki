@@ -56,13 +56,7 @@ typealias nat1 = Int
 
 typealias nat = Int
 
-typealias longNat = Long
-
-typealias longNat1 = Long
-
 typealias int = Int
-
-typealias long = Long
 
 typealias bool = Boolean
 
@@ -71,16 +65,10 @@ object InbuiltPrimitiveInvariant {
     val invariants = mapOf(
         nat1::class to ::isNat1Valid,
         nat::class to ::isNatValid,
-        longNat1::class to ::isLongNat1Valid,
-        longNat::class to ::isLongNatValid
     )
 
     fun isNat1Valid(value: nat1) = value > 0
 
     fun isNatValid(value: nat1) = value >= 0
-
-    fun isLongNat1Valid(value: longNat1) = value > 0
-
-    fun isLongNatValid(value: longNat) = value >= 0
 
 }
