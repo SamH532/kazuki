@@ -214,13 +214,12 @@ val maxDTG: (Set1<DTG>) -> DTG = function(
 
 val monthsBetween: (DTG, DTG) -> nat = function(
     command = { starts: DTG, ends: DTG ->
-
-//        MONTHS_PER_YEAR * yearsBetween(starts, ends) + if (ends.date.day >= starts.date.day) { ends.date.month - starts.date.month} else {ends.date.month - starts.date.month - 1}
-        var n = 0
-        while (starts.functions.addMonths(n).duration_ms <= ends.duration_ms) {
-            n++
-        }
-        n - 1
+        MONTHS_PER_YEAR * yearsBetween(starts, ends) + (if (ends.date.month < starts.date.month) 12 else 0) +
+                if (ends.date.day >= starts.date.day) {
+                    ends.date.month - starts.date.month
+                } else {
+                    ends.date.month - starts.date.month - 1
+                }
     },
     pre = { starts, ends -> starts.duration_ms <= ends.duration_ms }
 )
