@@ -4,15 +4,42 @@ import com.anaplan.engineering.kazuki.core.PreconditionFailure
 import com.anaplan.engineering.kazuki.core.mk_
 import com.anaplan.engineering.kazuki.core.mk_Seq
 import com.anaplan.engineering.kazuki.core.mk_Set1
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.*
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.DTG_Module.mk_DTG
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.Date_Module.mk_Date
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.DtgInZone_Module.mk_DtgInZone
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.Duration_Module.mk_Duration
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.Interval_Module.mk_Interval
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.Offset_Module.mk_Offset
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.TimeInZone_Module.mk_TimeInZone
-import com.anaplan.engineering.kazuki.toolkit.ISO8601.Time_Module.mk_Time
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.FIRST_DATE
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.FIRST_TIME
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.addMonths
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.daysInMonth
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.daysInYear
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.diff
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.durDiff
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.isDTG
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.isDate
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.isLeap
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.maxDTG
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.maxDate
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.maxDuration
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.maxTime
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.minDTG
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.minDate
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.minDuration
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.minTime
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.monthsBetween
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.nextDateForDay
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.nextDateForYM
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.previousDateForDay
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.previousDateForYM
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.strToDTG
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.strToDate
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.subtractMonths
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.sumDuration
+import com.anaplan.engineering.kazuki.toolkit.ISO8601.yearsBetween
+import com.anaplan.engineering.kazuki.toolkit.ISO8601_Module.mk_DTG
+import com.anaplan.engineering.kazuki.toolkit.ISO8601_Module.mk_DTGInZone
+import com.anaplan.engineering.kazuki.toolkit.ISO8601_Module.mk_Date
+import com.anaplan.engineering.kazuki.toolkit.ISO8601_Module.mk_Duration
+import com.anaplan.engineering.kazuki.toolkit.ISO8601_Module.mk_Interval
+import com.anaplan.engineering.kazuki.toolkit.ISO8601_Module.mk_Offset
+import com.anaplan.engineering.kazuki.toolkit.ISO8601_Module.mk_Time
+import com.anaplan.engineering.kazuki.toolkit.ISO8601_Module.mk_TimeInZone
 import junit.framework.TestCase.assertEquals
 import kotlin.test.Ignore
 import kotlin.test.Test
@@ -45,30 +72,30 @@ class ISO8601Test {
     fun dtgInRangeDayTest() {
         assertEquals(
             true,
-            mk_DTG(mk_Date(1990, 1, 3), FirstTime).functions.inRange(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+            mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME).functions.inRange(
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             )
         )
         assertEquals(
             false,
-            mk_DTG(mk_Date(1990, 1, 7), FirstTime).functions.inRange(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+            mk_DTG(mk_Date(1990, 1, 7), FIRST_TIME).functions.inRange(
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             )
         )
         assertEquals(
             true,
-            mk_DTG(mk_Date(1990, 1, 1), FirstTime).functions.inRange(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+            mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME).functions.inRange(
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             )
         )
         assertEquals(
             false,
-            mk_DTG(mk_Date(1990, 1, 3), FirstTime).functions.inRange(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 3), FirstTime)
+            mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME).functions.inRange(
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME)
             )
         )
     }
@@ -77,30 +104,30 @@ class ISO8601Test {
     fun dtgInRangeTimeTest() {
         assertEquals(
             true,
-            mk_DTG(FirstDate, mk_Time(2, 30, 0, 0)).functions.inRange(
-                mk_DTG(FirstDate, mk_Time(2, 0, 0, 0)),
-                mk_DTG(FirstDate, mk_Time(3, 0, 0, 0))
+            mk_DTG(FIRST_DATE, mk_Time(2, 30, 0, 0)).functions.inRange(
+                mk_DTG(FIRST_DATE, mk_Time(2, 0, 0, 0)),
+                mk_DTG(FIRST_DATE, mk_Time(3, 0, 0, 0))
             )
         )
         assertEquals(
             false,
-            mk_DTG(FirstDate, mk_Time(3, 30, 0, 0)).functions.inRange(
-                mk_DTG(FirstDate, mk_Time(2, 0, 0, 0)),
-                mk_DTG(FirstDate, mk_Time(3, 0, 0, 0))
+            mk_DTG(FIRST_DATE, mk_Time(3, 30, 0, 0)).functions.inRange(
+                mk_DTG(FIRST_DATE, mk_Time(2, 0, 0, 0)),
+                mk_DTG(FIRST_DATE, mk_Time(3, 0, 0, 0))
             )
         )
         assertEquals(
             true,
-            mk_DTG(FirstDate, mk_Time(2, 0, 0, 0)).functions.inRange(
-                mk_DTG(FirstDate, mk_Time(2, 0, 0, 0)),
-                mk_DTG(FirstDate, mk_Time(3, 0, 0, 0))
+            mk_DTG(FIRST_DATE, mk_Time(2, 0, 0, 0)).functions.inRange(
+                mk_DTG(FIRST_DATE, mk_Time(2, 0, 0, 0)),
+                mk_DTG(FIRST_DATE, mk_Time(3, 0, 0, 0))
             )
         )
         assertEquals(
             false,
-            mk_DTG(FirstDate, mk_Time(3, 0, 0, 0)).functions.inRange(
-                mk_DTG(FirstDate, mk_Time(2, 0, 0, 0)),
-                mk_DTG(FirstDate, mk_Time(3, 0, 0, 0))
+            mk_DTG(FIRST_DATE, mk_Time(3, 0, 0, 0)).functions.inRange(
+                mk_DTG(FIRST_DATE, mk_Time(2, 0, 0, 0)),
+                mk_DTG(FIRST_DATE, mk_Time(3, 0, 0, 0))
             )
         )
     }
@@ -111,33 +138,33 @@ class ISO8601Test {
     fun dtgWithinTest() {
         assertEquals(
             true,
-            mk_DTG(mk_Date(1989, 1, 3), FirstTime).functions.within(
-                Duration.fromDays(3), mk_DTG(mk_Date(1989, 1, 1), FirstTime)
+            mk_DTG(mk_Date(1989, 1, 3), FIRST_TIME).functions.within(
+                ISO8601.Duration.fromDays(3), mk_DTG(mk_Date(1989, 1, 1), FIRST_TIME)
             )
         )
         assertEquals(
             true,
-            mk_DTG(mk_Date(1989, 12, 30), FirstTime).functions.within(
-                Duration.fromDays(3),
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime)
+            mk_DTG(mk_Date(1989, 12, 30), FIRST_TIME).functions.within(
+                ISO8601.Duration.fromDays(3),
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
             )
         )
         assertEquals(
             true,
-            mk_DTG(mk_Date(1990, 1, 1), FirstTime).functions.within(
-                Duration.fromDays(0), mk_DTG(mk_Date(1990, 1, 1), FirstTime)
+            mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME).functions.within(
+                ISO8601.Duration.fromDays(0), mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
             )
         )
         assertEquals(
             false,
-            mk_DTG(mk_Date(1990, 1, 6), FirstTime).functions.within(
-                Duration.fromDays(3), mk_DTG(mk_Date(1990, 1, 1), FirstTime)
+            mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME).functions.within(
+                ISO8601.Duration.fromDays(3), mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
             )
         )
         assertEquals(
             false,
-            mk_DTG(mk_Date(1989, 12, 27), FirstTime).functions.within(
-                Duration.fromDays(3), mk_DTG(mk_Date(1990, 1, 1), FirstTime)
+            mk_DTG(mk_Date(1989, 12, 27), FIRST_TIME).functions.within(
+                ISO8601.Duration.fromDays(3), mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
             )
         )
     }
@@ -148,76 +175,76 @@ class ISO8601Test {
     fun inIntervalTest() {
         assertEquals(
             true,
-            mk_DTG(mk_Date(1990, 1, 3), FirstTime).functions.inInterval(
+            mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME).functions.inInterval(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             false,
-            mk_DTG(mk_Date(1990, 1, 7), FirstTime).functions.inInterval(
+            mk_DTG(mk_Date(1990, 1, 7), FIRST_TIME).functions.inInterval(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             true,
-            mk_DTG(mk_Date(1990, 1, 1), FirstTime).functions.inInterval(
+            mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME).functions.inInterval(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
                 )
             )
 
         )
         assertEquals(
             false,
-            mk_DTG(mk_Date(1990, 1, 3), FirstTime).functions.inInterval(
+            mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME).functions.inInterval(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 3), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             true,
-            mk_DTG(FirstDate, mk_Time(2, 30, 0, 0)).functions.inInterval(
+            mk_DTG(FIRST_DATE, mk_Time(2, 30, 0, 0)).functions.inInterval(
                 mk_Interval(
-                    mk_DTG(FirstDate, mk_Time(2, 0, 0, 0)),
-                    mk_DTG(FirstDate, mk_Time(3, 0, 0, 0))
+                    mk_DTG(FIRST_DATE, mk_Time(2, 0, 0, 0)),
+                    mk_DTG(FIRST_DATE, mk_Time(3, 0, 0, 0))
                 )
             )
         )
         assertEquals(
             false,
-            mk_DTG(FirstDate, mk_Time(3, 30, 0, 0)).functions.inInterval(
+            mk_DTG(FIRST_DATE, mk_Time(3, 30, 0, 0)).functions.inInterval(
                 mk_Interval(
-                    mk_DTG(FirstDate, mk_Time(2, 0, 0, 0)),
-                    mk_DTG(FirstDate, mk_Time(3, 0, 0, 0))
+                    mk_DTG(FIRST_DATE, mk_Time(2, 0, 0, 0)),
+                    mk_DTG(FIRST_DATE, mk_Time(3, 0, 0, 0))
                 )
             )
 
         )
         assertEquals(
             true,
-            mk_DTG(FirstDate, mk_Time(2, 0, 0, 0)).functions.inInterval(
+            mk_DTG(FIRST_DATE, mk_Time(2, 0, 0, 0)).functions.inInterval(
                 mk_Interval(
-                    mk_DTG(FirstDate, mk_Time(2, 0, 0, 0)),
-                    mk_DTG(FirstDate, mk_Time(3, 0, 0, 0))
+                    mk_DTG(FIRST_DATE, mk_Time(2, 0, 0, 0)),
+                    mk_DTG(FIRST_DATE, mk_Time(3, 0, 0, 0))
                 )
             )
 
         )
         assertEquals(
             false,
-            mk_DTG(FirstDate, mk_Time(3, 0, 0, 0)).functions.inInterval(
+            mk_DTG(FIRST_DATE, mk_Time(3, 0, 0, 0)).functions.inInterval(
                 mk_Interval(
-                    mk_DTG(FirstDate, mk_Time(2, 0, 0, 0)),
-                    mk_DTG(FirstDate, mk_Time(3, 0, 0, 0))
+                    mk_DTG(FIRST_DATE, mk_Time(2, 0, 0, 0)),
+                    mk_DTG(FIRST_DATE, mk_Time(3, 0, 0, 0))
                 )
             )
         )
@@ -230,72 +257,72 @@ class ISO8601Test {
         assertEquals(
             true,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 2), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 4), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 2), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 4), FIRST_TIME)
             ).functions.overlap(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 3), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             true,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 3), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME)
             ).functions.overlap(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 2), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 4), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 2), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 4), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             true,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             ).functions.overlap(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 2), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 4), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 2), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 4), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             true,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             ).functions.overlap(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             false,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             ).functions.overlap(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 6), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 8), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 8), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             false,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             ).functions.overlap(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 8), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 10), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 8), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 10), FIRST_TIME)
                 )
             )
         )
@@ -308,96 +335,96 @@ class ISO8601Test {
         assertEquals(
             true,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 3), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             ).functions.within(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 10), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 10), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             false,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 12), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 14), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 12), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 14), FIRST_TIME)
             ).functions.within(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 10), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 10), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             false,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 3), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             ).functions.within(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 5), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 10), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 5), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 10), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             false,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 8), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 12), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 8), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 12), FIRST_TIME)
             ).functions.within(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 5), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 10), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 5), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 10), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             false,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 3), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             ).functions.within(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 3), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             true,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 3), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             ).functions.within(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 3), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             true,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 3), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 3), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             ).functions.within(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 2), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 2), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
                 )
             )
         )
         assertEquals(
             true,
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 2), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 5), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 2), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 5), FIRST_TIME)
             ).functions.within(
                 mk_Interval(
-                    mk_DTG(mk_Date(1990, 1, 2), FirstTime),
-                    mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                    mk_DTG(mk_Date(1990, 1, 2), FIRST_TIME),
+                    mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
                 )
             )
         )
@@ -408,23 +435,23 @@ class ISO8601Test {
     @Test
     fun addTest() {
         assertEquals(
-            mk_DTG(mk_Date(1990, 1, 5), FirstTime),
-            mk_DTG(mk_Date(1990, 1, 2), FirstTime).functions.add(Duration.fromDays(3))
+            mk_DTG(mk_Date(1990, 1, 5), FIRST_TIME),
+            mk_DTG(mk_Date(1990, 1, 2), FIRST_TIME).functions.add(ISO8601.Duration.fromDays(3))
         )
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 2), mk_Time(5, 20, 0, 0)),
             mk_DTG(mk_Date(1990, 1, 2), mk_Time(2, 0, 0, 0)).functions.add(
-                Duration.fromHours(3).functions.add(Duration.fromMinutes(20))
+                ISO8601.Duration.fromHours(3).functions.add(ISO8601.Duration.fromMinutes(20))
             )
         )
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 5), mk_Time(5, 20, 10, 5)),
             mk_DTG(mk_Date(1990, 1, 1), mk_Time(2, 0, 0, 0)).functions.add(
-                Duration.fromDays(4).functions.add(
-                    Duration.fromHours(3).functions.add(
-                        Duration.fromMinutes(20).functions.add(
-                            Duration.fromSeconds(10).functions.add(
-                                Duration.fromMillis(5)
+                ISO8601.Duration.fromDays(4).functions.add(
+                    ISO8601.Duration.fromHours(3).functions.add(
+                        ISO8601.Duration.fromMinutes(20).functions.add(
+                            ISO8601.Duration.fromSeconds(10).functions.add(
+                                ISO8601.Duration.fromMillis(5)
                             )
                         )
                     )
@@ -438,26 +465,26 @@ class ISO8601Test {
     @Test
     fun subtractTest() {
         assertEquals(
-            mk_DTG(mk_Date(1990, 1, 2), FirstTime),
-            mk_DTG(mk_Date(1990, 1, 5), FirstTime).functions.subtract(
-                Duration.fromDays(3)
+            mk_DTG(mk_Date(1990, 1, 2), FIRST_TIME),
+            mk_DTG(mk_Date(1990, 1, 5), FIRST_TIME).functions.subtract(
+                ISO8601.Duration.fromDays(3)
             )
         )
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 5), mk_Time(3, 20, 0, 0)),
             mk_DTG(mk_Date(1990, 1, 5), mk_Time(6, 40, 0, 0)).functions.subtract(
-                Duration.fromHours(3).functions.add(Duration.fromMinutes(20))
+                ISO8601.Duration.fromHours(3).functions.add(ISO8601.Duration.fromMinutes(20))
             )
         )
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 2), mk_Time(2, 20, 20, 5)),
 
             mk_DTG(mk_Date(1990, 1, 6), mk_Time(5, 40, 30, 10)).functions.subtract(
-                Duration.fromDays(4).functions.add(
-                    Duration.fromHours(3).functions.add(
-                        Duration.fromMinutes(20).functions.add(
-                            Duration.fromSeconds(10).functions.add(
-                                Duration.fromMillis(5)
+                ISO8601.Duration.fromDays(4).functions.add(
+                    ISO8601.Duration.fromHours(3).functions.add(
+                        ISO8601.Duration.fromMinutes(20).functions.add(
+                            ISO8601.Duration.fromSeconds(10).functions.add(
+                                ISO8601.Duration.fromMillis(5)
                             )
                         )
                     )
@@ -471,11 +498,11 @@ class ISO8601Test {
     @Test
     fun diffTest() {
         assertEquals(
-            Duration.fromDays(5).functions.add(
-                Duration.fromHours(5).functions.add(
-                    Duration.fromMinutes(5).functions.add(
-                        Duration.fromSeconds(5).functions.add(
-                            Duration.fromMillis(5)
+            ISO8601.Duration.fromDays(5).functions.add(
+                ISO8601.Duration.fromHours(5).functions.add(
+                    ISO8601.Duration.fromMinutes(5).functions.add(
+                        ISO8601.Duration.fromSeconds(5).functions.add(
+                            ISO8601.Duration.fromMillis(5)
                         )
                     )
                 )
@@ -486,11 +513,11 @@ class ISO8601Test {
             )
         )
         assertEquals(
-            Duration.fromDays(5).functions.add(
-                Duration.fromHours(5).functions.add(
-                    Duration.fromMinutes(5).functions.add(
-                        Duration.fromSeconds(5).functions.add(
-                            Duration.fromMillis(5)
+            ISO8601.Duration.fromDays(5).functions.add(
+                ISO8601.Duration.fromHours(5).functions.add(
+                    ISO8601.Duration.fromMinutes(5).functions.add(
+                        ISO8601.Duration.fromSeconds(5).functions.add(
+                            ISO8601.Duration.fromMillis(5)
                         )
                     )
                 )
@@ -501,11 +528,11 @@ class ISO8601Test {
             )
         )
         assertEquals(
-            Duration.fromDays(5).functions.add(
-                Duration.fromHours(5).functions.add(
-                    Duration.fromMinutes(5).functions.add(
-                        Duration.fromSeconds(5).functions.add(
-                            Duration.fromMillis(5)
+            ISO8601.Duration.fromDays(5).functions.add(
+                ISO8601.Duration.fromHours(5).functions.add(
+                    ISO8601.Duration.fromMinutes(5).functions.add(
+                        ISO8601.Duration.fromSeconds(5).functions.add(
+                            ISO8601.Duration.fromMillis(5)
                         )
                     )
                 )
@@ -516,11 +543,11 @@ class ISO8601Test {
             )
         )
         assertEquals(
-            Duration.fromDays(5).functions.add(
-                Duration.fromHours(5).functions.add(
-                    Duration.fromMinutes(5).functions.add(
-                        Duration.fromSeconds(5).functions.add(
-                            Duration.fromMillis(5)
+            ISO8601.Duration.fromDays(5).functions.add(
+                ISO8601.Duration.fromHours(5).functions.add(
+                    ISO8601.Duration.fromMinutes(5).functions.add(
+                        ISO8601.Duration.fromSeconds(5).functions.add(
+                            ISO8601.Duration.fromMillis(5)
                         )
                     )
                 )
@@ -535,35 +562,35 @@ class ISO8601Test {
     @Test
     fun durAddTest() {
         assertEquals(
-            Duration.fromDays(5),
-            Duration.fromDays(2).functions.add(Duration.fromDays(3))
+            ISO8601.Duration.fromDays(5),
+            ISO8601.Duration.fromDays(2).functions.add(ISO8601.Duration.fromDays(3))
         )
         assertEquals(
-            Duration.fromDays(2),
-            Duration.fromDays(2).functions.add(Duration.fromDays(0))
+            ISO8601.Duration.fromDays(2),
+            ISO8601.Duration.fromDays(2).functions.add(ISO8601.Duration.fromDays(0))
         )
     }
 
     @Test
     fun durSubtractTest() {
         assertEquals(
-            Duration.fromDays(5),
-            Duration.fromDays(8).functions.subtract(Duration.fromDays(3))
+            ISO8601.Duration.fromDays(5),
+            ISO8601.Duration.fromDays(8).functions.subtract(ISO8601.Duration.fromDays(3))
         )
         assertFailsWith<PreconditionFailure> {
-            Duration.fromDays(2).functions.subtract(
-                Duration.fromDays(
+            ISO8601.Duration.fromDays(2).functions.subtract(
+                ISO8601.Duration.fromDays(
                     3
                 )
             )
         }
         assertEquals(
-            Duration.fromDays(8),
-            Duration.fromDays(8).functions.subtract(Duration.fromDays(0))
+            ISO8601.Duration.fromDays(8),
+            ISO8601.Duration.fromDays(8).functions.subtract(ISO8601.Duration.fromDays(0))
         )
         assertEquals(
-            Duration.fromDays(0),
-            Duration.fromDays(8).functions.subtract(Duration.fromDays(8))
+            ISO8601.Duration.fromDays(0),
+            ISO8601.Duration.fromDays(8).functions.subtract(ISO8601.Duration.fromDays(8))
         )
     }
 
@@ -571,50 +598,38 @@ class ISO8601Test {
     @Ignore
     @Test
     fun durMultiplyTest() {
-        assertEquals(Duration.fromDays(10), Duration.fromDays(2).functions.multiply(5))
+        assertEquals(ISO8601.Duration.fromDays(10), ISO8601.Duration.fromDays(2).functions.multiply(5))
         assertEquals(
-            Duration.fromDays(1).functions.add(Duration.fromHours(1)),
-            Duration.fromHours(5).functions.multiply(5)
+            ISO8601.Duration.fromDays(1).functions.add(ISO8601.Duration.fromHours(1)),
+            ISO8601.Duration.fromHours(5).functions.multiply(5)
         )
-        assertEquals(
-            Duration.fromDays(5000000),
-            Duration.fromDays(1000000).functions.multiply(5)
-        )
+        assertEquals(ISO8601.Duration.fromDays(5000000), ISO8601.Duration.fromDays(1000000).functions.multiply(5))
     }
 
     @Test
     // Fails due to value overflowing because nat is based on int, not long
     @Ignore
     fun durDivideTest() {
-        assertEquals(Duration.fromDays(2), Duration.fromDays(10).functions.divide(5))
-        assertEquals(Duration.fromHours(12), Duration.fromDays(10).functions.divide(20))
-        assertEquals(
-            Duration.fromDays(1000000),
-            Duration.fromDays(5000000).functions.divide(5)
-        )
+        assertEquals(ISO8601.Duration.fromDays(2), ISO8601.Duration.fromDays(10).functions.divide(5))
+        assertEquals(ISO8601.Duration.fromHours(12), ISO8601.Duration.fromDays(10).functions.divide(20))
+        assertEquals(ISO8601.Duration.fromDays(1000000), ISO8601.Duration.fromDays(5000000).functions.divide(5))
     }
 
     @Test
     fun durDiffTest() {
+        assertEquals(ISO8601.Duration.fromDays(5), durDiff(ISO8601.Duration.fromDays(10), ISO8601.Duration.fromDays(5)))
+        assertEquals(ISO8601.Duration.fromDays(5), durDiff(ISO8601.Duration.fromDays(5), ISO8601.Duration.fromDays(10)))
         assertEquals(
-            Duration.fromDays(5),
-            durationDiff(Duration.fromDays(10), Duration.fromDays(5))
+            ISO8601.Duration.fromDays(0),
+            durDiff(ISO8601.Duration.fromDays(10), ISO8601.Duration.fromDays(10))
         )
         assertEquals(
-            Duration.fromDays(5),
-            durationDiff(Duration.fromDays(5), Duration.fromDays(10))
+            ISO8601.Duration.fromDays(1999999995),
+            durDiff(ISO8601.Duration.fromDays(2000000000), ISO8601.Duration.fromDays(5))
         )
         assertEquals(
-            Duration.fromDays(0),
-            durationDiff(Duration.fromDays(10), Duration.fromDays(10))
-        )
-        assertEquals(
-            Duration.fromDays(1999999995),
-            durationDiff(Duration.fromDays(2000000000), Duration.fromDays(5))
-        )
-        assertEquals(
-            Duration.fromMillis(15),
-            durationDiff(Duration.fromMillis(20), Duration.fromMillis(5))
+            ISO8601.Duration.fromMillis(15),
+            durDiff(ISO8601.Duration.fromMillis(20), ISO8601.Duration.fromMillis(5))
         )
     }
 
@@ -627,9 +642,9 @@ class ISO8601Test {
 
     @Test
     fun durFromMillisTest() {
-        assertEquals(12, Duration.fromMillis(12).duration_ms)
-        assertEquals(0, Duration.fromMillis(0).duration_ms)
-        assertEquals(2000000000, Duration.fromMillis(2000000000).duration_ms)
+        assertEquals(12, ISO8601.Duration.fromMillis(12).dur)
+        assertEquals(0, ISO8601.Duration.fromMillis(0).dur)
+        assertEquals(2000000000, ISO8601.Duration.fromMillis(2000000000).dur)
     }
 
     @Test
@@ -641,9 +656,9 @@ class ISO8601Test {
 
     @Test
     fun durFromSecondsTest() {
-        assertEquals(60000, Duration.fromSeconds(60).duration_ms)
-        assertEquals(0, Duration.fromSeconds(0).duration_ms)
-        assertEquals(2000000000, Duration.fromSeconds(2000000).duration_ms)
+        assertEquals(60000, ISO8601.Duration.fromSeconds(60).dur)
+        assertEquals(0, ISO8601.Duration.fromSeconds(0).dur)
+        assertEquals(2000000000, ISO8601.Duration.fromSeconds(2000000).dur)
     }
 
     @Test
@@ -657,9 +672,9 @@ class ISO8601Test {
     @Ignore
     @Test
     fun durFromMinutesTest() {
-        assertEquals(3600000, Duration.fromMinutes(60).duration_ms)
-        assertEquals(0, Duration.fromMinutes(0).duration_ms)
-        assertEquals(120000000000, Duration.fromMinutes(2000000).duration_ms)
+        assertEquals(3600000, ISO8601.Duration.fromMinutes(60).dur)
+        assertEquals(0, ISO8601.Duration.fromMinutes(0).dur)
+        assertEquals(120000000000, ISO8601.Duration.fromMinutes(2000000).dur)
     }
 
     // Fails due to value overflowing because nat is based on int, not long
@@ -667,16 +682,16 @@ class ISO8601Test {
     @Test
     fun durModMinutesTest() {
         assertEquals(
-            Duration.fromSeconds(10),
-            Duration.fromMinutes(5).functions.add(Duration.fromSeconds(10)).functions.modMinutes()
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromMinutes(5).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modMinutes()
         )
         assertEquals(
-            Duration.fromSeconds(10),
-            Duration.fromMinutes(0).functions.add(Duration.fromSeconds(10)).functions.modMinutes()
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromMinutes(0).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modMinutes()
         )
         assertEquals(
-            Duration.fromSeconds(10),
-            Duration.fromMinutes(2000000).functions.add(Duration.fromSeconds(10)).functions.modMinutes()
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromMinutes(2000000).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modMinutes()
         )
     }
 
@@ -687,16 +702,16 @@ class ISO8601Test {
         assertEquals(10, mk_Duration(36000000).functions.toHours())
         assertEquals(0, mk_Duration(0).functions.toHours())
         assertEquals(200, mk_Duration(720000000).functions.toHours())
-        assertEquals(876600, Duration.durationUpToYear(100).functions.toHours())
+        assertEquals(876600, ISO8601.Duration.durUpToYear(100).functions.toHours())
     }
 
     // Fails due to value overflowing because nat is based on int, not long
     @Ignore
     @Test
     fun durFromHoursTest() {
-        assertEquals(216000000, Duration.fromHours(60).duration_ms)
-        assertEquals(0, Duration.fromHours(0).duration_ms)
-        assertEquals(7200000000, Duration.fromHours(2000).duration_ms)
+        assertEquals(216000000, ISO8601.Duration.fromHours(60).dur)
+        assertEquals(0, ISO8601.Duration.fromHours(0).dur)
+        assertEquals(7200000000, ISO8601.Duration.fromHours(2000).dur)
     }
 
     // Fails due to value overflowing because nat is based on int, not long
@@ -704,16 +719,16 @@ class ISO8601Test {
     @Test
     fun durModHoursTest() {
         assertEquals(
-            Duration.fromSeconds(10),
-            Duration.fromHours(5).functions.add(Duration.fromSeconds(10)).functions.modHours()
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromHours(5).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modHours()
         )
         assertEquals(
-            Duration.fromSeconds(10),
-            Duration.fromHours(0).functions.add(Duration.fromSeconds(10)).functions.modHours()
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromHours(0).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modHours()
         )
         assertEquals(
-            Duration.fromSeconds(10),
-            Duration.fromHours(2000000).functions.add(Duration.fromSeconds(10)).functions.modHours()
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromHours(2000000).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modHours()
         )
     }
 
@@ -729,9 +744,9 @@ class ISO8601Test {
     @Ignore
     @Test
     fun durFromDaysTest() {
-        assertEquals(864000000, Duration.fromDays(10).duration_ms)
-        assertEquals(0, Duration.fromDays(0).duration_ms)
-        assertEquals(172800000000, Duration.fromDays(2000).duration_ms)
+        assertEquals(864000000, ISO8601.Duration.fromDays(10).dur)
+        assertEquals(0, ISO8601.Duration.fromDays(0).dur)
+        assertEquals(172800000000, ISO8601.Duration.fromDays(2000).dur)
 
     }
 
@@ -740,27 +755,27 @@ class ISO8601Test {
     @Test
     fun dateToDayOfWeekTest() {
         assertEquals(
-            DayOfWeek.Thursday,
+            ISO8601.DayOfWeek.Thursday,
             mk_Date(2009, 8, 13).functions.toDayOfWeek()
         )
         assertEquals(
-            DayOfWeek.Saturday,
+            ISO8601.DayOfWeek.Saturday,
             mk_Date(2000, 4, 1).functions.toDayOfWeek()
         )
         assertEquals(
-            DayOfWeek.Monday,
+            ISO8601.DayOfWeek.Monday,
             mk_Date(1, 1, 1).functions.toDayOfWeek()
         )
         assertEquals(
-            DayOfWeek.Wednesday,
+            ISO8601.DayOfWeek.Wednesday,
             mk_Date(2019, 10, 9).functions.toDayOfWeek()
         )
         assertEquals(
-            DayOfWeek.Saturday,
+            ISO8601.DayOfWeek.Saturday,
             mk_Date(2017, 10, 28).functions.toDayOfWeek()
         )
         assertEquals(
-            DayOfWeek.Wednesday,
+            ISO8601.DayOfWeek.Wednesday,
             mk_Date(2020, 1, 1).functions.toDayOfWeek()
         )
     }
@@ -770,16 +785,16 @@ class ISO8601Test {
     @Test
     fun durModDaysTest() {
         assertEquals(
-            Duration.fromSeconds(10),
-            Duration.fromDays(5).functions.add(Duration.fromSeconds(10)).functions.modDays()
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromDays(5).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modDays()
         )
         assertEquals(
-            Duration.fromSeconds(10),
-            Duration.fromDays(0).functions.add(Duration.fromSeconds(10)).functions.modDays()
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromDays(0).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modDays()
         )
         assertEquals(
-            Duration.fromSeconds(10),
-            Duration.fromDays(200000).functions.add(Duration.fromSeconds(10)).functions.modDays()
+            ISO8601.Duration.fromSeconds(10),
+            ISO8601.Duration.fromDays(200000).functions.add(ISO8601.Duration.fromSeconds(10)).functions.modDays()
         )
     }
 
@@ -787,42 +802,42 @@ class ISO8601Test {
     @Ignore
     @Test
     fun toMonthTest() {
-        assertEquals(0, Duration.fromDays(30).functions.toMonth(1990))
-        assertEquals(1, Duration.fromDays(31).functions.toMonth(1990))
-        assertEquals(0, Duration.fromDays(0).functions.toMonth(1990))
-        assertEquals(11, Duration.fromDays(364).functions.toMonth(1990))
+        assertEquals(0, ISO8601.Duration.fromDays(30).functions.toMonth(1990))
+        assertEquals(1, ISO8601.Duration.fromDays(31).functions.toMonth(1990))
+        assertEquals(0, ISO8601.Duration.fromDays(0).functions.toMonth(1990))
+        assertEquals(11, ISO8601.Duration.fromDays(364).functions.toMonth(1990))
     }
 
     @Test
     fun durFromMonthTest() {
-        assertEquals(Duration.fromDays(31), Duration.fromMonth(1990, 1))
-        assertEquals(Duration.fromDays(28), Duration.fromMonth(1990, 2))
-        assertEquals(Duration.fromDays(30), Duration.fromMonth(1990, 9))
+        assertEquals(ISO8601.Duration.fromDays(31), ISO8601.Duration.fromMonth(1990, 1))
+        assertEquals(ISO8601.Duration.fromDays(28), ISO8601.Duration.fromMonth(1990, 2))
+        assertEquals(ISO8601.Duration.fromDays(30), ISO8601.Duration.fromMonth(1990, 9))
     }
 
     @Test
     fun durUpToMonthTest() {
-        assertEquals(Duration.fromDays(90), Duration.durationUpToMonth(1990, 4))
-        assertEquals(Duration.fromDays(59), Duration.durationUpToMonth(1990, 3))
+        assertEquals(ISO8601.Duration.fromDays(90), ISO8601.Duration.durUpToMonth(1990, 4))
+        assertEquals(ISO8601.Duration.fromDays(59), ISO8601.Duration.durUpToMonth(1990, 3))
     }
 
     // Fails due to value overflowing because nat is based on int, not long
     @Ignore
     @Test
     fun toYearTest() {
-        assertEquals(0, Duration.fromDays(0).functions.toYear(1990))
-        assertEquals(2, Duration.fromDays(800).functions.toYear(1990))
+        assertEquals(0, ISO8601.Duration.fromDays(0).functions.toYear(1990))
+        assertEquals(2, ISO8601.Duration.fromDays(800).functions.toYear(1990))
     }
 
     @Test
     fun durFromYearTest() {
-        assertEquals(Duration.fromDays(365), Duration.fromYear(1990))
-        assertEquals(Duration.fromDays(366), Duration.fromYear(2020))
+        assertEquals(ISO8601.Duration.fromDays(365), ISO8601.Duration.fromYear(1990))
+        assertEquals(ISO8601.Duration.fromDays(366), ISO8601.Duration.fromYear(2020))
     }
 
     @Test
     fun durUpToYearTest() {
-        assertEquals(Duration.fromDays(366), Duration.durationUpToYear(1))
+        assertEquals(ISO8601.Duration.fromDays(366), ISO8601.Duration.durUpToYear(1))
     }
 
     // Fails due to value overflowing because nat is based on int, not long
@@ -831,15 +846,15 @@ class ISO8601Test {
     fun toDTGTest() {
         assertEquals(
             mk_DTG(mk_Date(0, 1, 6), mk_Time(0, 0, 0, 0)),
-            Duration.fromDays(5).functions.toDTG()
+            ISO8601.Duration.fromDays(5).functions.toDTG()
         )
         assertEquals(
             mk_DTG(mk_Date(0, 1, 1), mk_Time(0, 0, 0, 0)),
-            Duration.fromDays(0).functions.toDTG()
+            ISO8601.Duration.fromDays(0).functions.toDTG()
         )
         assertEquals(
             mk_DTG(mk_Date(0, 2, 7), mk_Time(0, 0, 0, 0)),
-            Duration.fromDays(37).functions.toDTG()
+            ISO8601.Duration.fromDays(37).functions.toDTG()
         )
     }
 
@@ -848,19 +863,19 @@ class ISO8601Test {
     @Test
     fun dtgToDurTest() {
         assertEquals(
-            Duration.fromDays(6),
+            ISO8601.Duration.fromDays(6),
 
-            mk_DTG(mk_Date(0, 1, 7), mk_Time(0, 0, 0, 0)).functions.toDuration()
+            mk_DTG(mk_Date(0, 1, 7), mk_Time(0, 0, 0, 0)).functions.toDur()
 
         )
         assertEquals(
-            Duration.fromDays(0),
-            mk_DTG(mk_Date(0, 1, 1), mk_Time(0, 0, 0, 0)).functions.toDuration()
+            ISO8601.Duration.fromDays(0),
+            mk_DTG(mk_Date(0, 1, 1), mk_Time(0, 0, 0, 0)).functions.toDur()
         )
 
         assertEquals(
-            Duration.fromDays(37),
-            mk_DTG(mk_Date(0, 2, 7), mk_Time(0, 0, 0, 0)).functions.toDuration()
+            ISO8601.Duration.fromDays(37),
+            mk_DTG(mk_Date(0, 2, 7), mk_Time(0, 0, 0, 0)).functions.toDur()
         )
     }
 
@@ -868,50 +883,50 @@ class ISO8601Test {
     @Ignore
     @Test
     fun toDateTest() {
-        assertEquals(mk_Date(0, 1, 4), Duration.fromDays(3).functions.toDate())
-        assertEquals(mk_Date(0, 1, 1), Duration.fromDays(0).functions.toDate())
+        assertEquals(mk_Date(0, 1, 4), ISO8601.Duration.fromDays(3).functions.toDate())
+        assertEquals(mk_Date(0, 1, 1), ISO8601.Duration.fromDays(0).functions.toDate())
     }
 
     @Test
     fun durFromDateTest() {
-        assertEquals(Duration.fromDays(3), mk_Date(0, 1, 4).functions.toDuration())
-        assertEquals(Duration.fromDays(0), mk_Date(0, 1, 1).functions.toDuration())
+        assertEquals(ISO8601.Duration.fromDays(3), mk_Date(0, 1, 4).functions.toDur())
+        assertEquals(ISO8601.Duration.fromDays(0), mk_Date(0, 1, 1).functions.toDur())
     }
 
     @Test
     fun toTimeTest() {
-        assertEquals(mk_Time(3, 0, 0, 0), Duration.fromHours(3).functions.toTime())
-        assertEquals(mk_Time(0, 0, 0, 0), Duration.fromHours(0).functions.toTime())
+        assertEquals(mk_Time(3, 0, 0, 0), ISO8601.Duration.fromHours(3).functions.toTime())
+        assertEquals(mk_Time(0, 0, 0, 0), ISO8601.Duration.fromHours(0).functions.toTime())
     }
 
     @Test
     fun durFromTimeTest() {
-        assertEquals(Duration.fromHours(4), mk_Time(4, 0, 0, 0).functions.toDuration())
-        assertEquals(Duration.fromHours(0), mk_Time(0, 0, 0, 0).functions.toDuration())
+        assertEquals(ISO8601.Duration.fromHours(4), mk_Time(4, 0, 0, 0).functions.toDur())
+        assertEquals(ISO8601.Duration.fromHours(0), mk_Time(0, 0, 0, 0).functions.toDur())
     }
 
     @Test
     fun durFromTimeInZoneTest() {
         assertEquals(
-            Duration.fromHours(4),
+            ISO8601.Duration.fromHours(4),
             mk_TimeInZone(
                 mk_Time(3, 0, 0, 0),
-                mk_Offset(Duration.fromHours(1), PlusOrMinus.Minus)
-            ).functions.toDuration()
+                mk_Offset(ISO8601.Duration.fromHours(1), ISO8601.PlusOrMinus.Minus)
+            ).functions.toDur()
         )
         assertEquals(
-            Duration.fromHours(2),
+            ISO8601.Duration.fromHours(2),
             mk_TimeInZone(
                 mk_Time(3, 0, 0, 0),
-                mk_Offset(Duration.fromHours(1), PlusOrMinus.Plus)
-            ).functions.toDuration()
+                mk_Offset(ISO8601.Duration.fromHours(1), ISO8601.PlusOrMinus.Plus)
+            ).functions.toDur()
         )
         assertEquals(
-            Duration.fromHours(0),
+            ISO8601.Duration.fromHours(0),
             mk_TimeInZone(
                 mk_Time(0, 0, 0, 0),
-                mk_Offset(Duration.fromHours(0), PlusOrMinus.None)
-            ).functions.toDuration()
+                mk_Offset(ISO8601.Duration.fromHours(0), ISO8601.PlusOrMinus.None)
+            ).functions.toDur()
         )
     }
 
@@ -920,18 +935,18 @@ class ISO8601Test {
     @Test
     fun durFromIntervalTest() {
         assertEquals(
-            Duration.fromDays(5),
+            ISO8601.Duration.fromDays(5),
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
-            ).functions.toDuration()
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
+            ).functions.toDur()
         )
         assertEquals(
-            Duration.fromHours(2),
+            ISO8601.Duration.fromHours(2),
             mk_Interval(
                 mk_DTG(mk_Date(1990, 1, 1), mk_Time(1, 0, 0, 0)),
                 mk_DTG(mk_Date(1990, 1, 1), mk_Time(3, 0, 0, 0))
-            ).functions.toDuration()
+            ).functions.toDur()
         )
     }
 
@@ -940,13 +955,13 @@ class ISO8601Test {
         assertEquals(
             true,
             mk_DTG(mk_Date(0, 1, 1), mk_Time(10, 0, 0, 0)).functions.finestGranularity(
-                Duration.fromHours(1)
+                ISO8601.Duration.fromHours(1)
             )
         )
         assertEquals(
             false,
             mk_DTG(mk_Date(0, 1, 1), mk_Time(10, 0, 0, 0)).functions.finestGranularity(
-                Duration.fromHours(3)
+                ISO8601.Duration.fromHours(3)
             )
         )
     }
@@ -961,7 +976,7 @@ class ISO8601Test {
                 mk_DTG(mk_Date(1990, 1, 1), mk_Time(1, 0, 0, 0)),
                 mk_DTG(mk_Date(1990, 1, 1), mk_Time(3, 0, 0, 0))
             ).functions.finestGranularityI(
-                Duration.fromHours(1)
+                ISO8601.Duration.fromHours(1)
 
             )
         )
@@ -971,7 +986,7 @@ class ISO8601Test {
                 mk_DTG(mk_Date(1990, 1, 1), mk_Time(1, 0, 0, 0)),
                 mk_DTG(mk_Date(1990, 1, 1), mk_Time(10, 0, 0, 0))
             ).functions.finestGranularityI(
-                Duration.fromHours(2)
+                ISO8601.Duration.fromHours(2)
             )
         )
 
@@ -1168,24 +1183,24 @@ class ISO8601Test {
     @Test
     fun minDurationTest() {
         assertEquals(
-            Duration.fromMinutes(40),
+            ISO8601.Duration.fromMinutes(40),
             minDuration(
                 mk_Set1(
-                    Duration.fromHours(3),
-                    Duration.fromMinutes(40),
-                    Duration.fromDays(2),
-                    Duration.fromHours(5)
+                    ISO8601.Duration.fromHours(3),
+                    ISO8601.Duration.fromMinutes(40),
+                    ISO8601.Duration.fromDays(2),
+                    ISO8601.Duration.fromHours(5)
                 )
             )
         )
         assertEquals(
-            Duration.fromHours(0),
+            ISO8601.Duration.fromHours(0),
             minDuration(
                 mk_Set1(
-                    Duration.fromHours(0),
-                    Duration.fromMinutes(14),
-                    Duration.fromDays(2),
-                    Duration.fromHours(23)
+                    ISO8601.Duration.fromHours(0),
+                    ISO8601.Duration.fromMinutes(14),
+                    ISO8601.Duration.fromDays(2),
+                    ISO8601.Duration.fromHours(23)
                 )
             )
         )
@@ -1194,24 +1209,24 @@ class ISO8601Test {
     @Test
     fun maxDurationTest() {
         assertEquals(
-            Duration.fromDays(2),
+            ISO8601.Duration.fromDays(2),
             maxDuration(
                 mk_Set1(
-                    Duration.fromHours(3),
-                    Duration.fromMinutes(40),
-                    Duration.fromDays(2),
-                    Duration.fromHours(5)
+                    ISO8601.Duration.fromHours(3),
+                    ISO8601.Duration.fromMinutes(40),
+                    ISO8601.Duration.fromDays(2),
+                    ISO8601.Duration.fromHours(5)
                 )
             )
         )
         assertEquals(
-            Duration.fromDays(2000000000),
+            ISO8601.Duration.fromDays(2000000000),
             maxDuration(
                 mk_Set1(
-                    Duration.fromHours(0),
-                    Duration.fromMinutes(14),
-                    Duration.fromDays(2000000000),
-                    Duration.fromHours(23)
+                    ISO8601.Duration.fromHours(0),
+                    ISO8601.Duration.fromMinutes(14),
+                    ISO8601.Duration.fromDays(2000000000),
+                    ISO8601.Duration.fromHours(23)
                 )
             )
         )
@@ -1223,10 +1238,10 @@ class ISO8601Test {
             mk_Duration(204000000),
             sumDuration(
                 mk_Seq(
-                    Duration.fromHours(3),
-                    Duration.fromMinutes(40),
-                    Duration.fromDays(2),
-                    Duration.fromHours(5)
+                    ISO8601.Duration.fromHours(3),
+                    ISO8601.Duration.fromMinutes(40),
+                    ISO8601.Duration.fromDays(2),
+                    ISO8601.Duration.fromHours(5)
                 )
             )
         )
@@ -1234,9 +1249,9 @@ class ISO8601Test {
             mk_Duration(0),
             sumDuration(
                 mk_Seq(
-                    Duration.fromHours(0),
-                    Duration.fromMinutes(0),
-                    Duration.fromDays(0)
+                    ISO8601.Duration.fromHours(0),
+                    ISO8601.Duration.fromMinutes(0),
+                    ISO8601.Duration.fromDays(0)
                 )
             )
         )
@@ -1301,31 +1316,31 @@ class ISO8601Test {
     fun normaliseTest() {
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 1), mk_Time(3, 0, 0, 0)),
-            mk_DtgInZone(
+            mk_DTGInZone(
                 mk_Date(1990, 1, 1),
                 mk_TimeInZone(
                     mk_Time(5, 0, 0, 0),
-                    mk_Offset(Duration.fromHours(2), PlusOrMinus.Plus)
+                    mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Plus)
                 )
             ).functions.normalise()
         )
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 1), mk_Time(7, 0, 0, 0)),
-            mk_DtgInZone(
+            mk_DTGInZone(
                 mk_Date(1990, 1, 1),
                 mk_TimeInZone(
                     mk_Time(5, 0, 0, 0),
-                    mk_Offset(Duration.fromHours(2), PlusOrMinus.Minus)
+                    mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Minus)
                 )
             ).functions.normalise()
         )
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 1), mk_Time(5, 0, 0, 0)),
-            mk_DtgInZone(
+            mk_DTGInZone(
                 mk_Date(1990, 1, 1),
                 mk_TimeInZone(
                     mk_Time(5, 0, 0, 0),
-                    mk_Offset(Duration.fromHours(0), PlusOrMinus.Minus)
+                    mk_Offset(ISO8601.Duration.fromHours(0), ISO8601.PlusOrMinus.Minus)
                 )
             ).functions.normalise()
         )
@@ -1334,38 +1349,38 @@ class ISO8601Test {
     @Test
     fun normaliseTimeTest() {
         assertEquals(
-            mk_(mk_Time(7, 23, 12, 0), PlusOrMinus.None),
+            mk_(mk_Time(7, 23, 12, 0), ISO8601.PlusOrMinus.None),
             mk_TimeInZone(
                 mk_Time(5, 23, 12, 0),
-                mk_Offset(Duration.fromHours(2), PlusOrMinus.Minus)
+                mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Minus)
             ).functions.normalise()
         )
         assertEquals(
-            mk_(mk_Time(1, 23, 12, 0), PlusOrMinus.Minus),
+            mk_(mk_Time(1, 23, 12, 0), ISO8601.PlusOrMinus.Minus),
             mk_TimeInZone(
                 mk_Time(23, 23, 12, 0),
-                mk_Offset(Duration.fromHours(2), PlusOrMinus.Minus)
+                mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Minus)
             ).functions.normalise()
         )
         assertEquals(
-            mk_(mk_Time(23, 23, 12, 0), PlusOrMinus.None),
+            mk_(mk_Time(23, 23, 12, 0), ISO8601.PlusOrMinus.None),
             mk_TimeInZone(
                 mk_Time(23, 23, 12, 0),
-                mk_Offset(Duration.fromHours(0), PlusOrMinus.Minus)
+                mk_Offset(ISO8601.Duration.fromHours(0), ISO8601.PlusOrMinus.Minus)
             ).functions.normalise()
         )
         assertEquals(
-            mk_(mk_Time(3, 23, 12, 0), PlusOrMinus.None),
+            mk_(mk_Time(3, 23, 12, 0), ISO8601.PlusOrMinus.None),
             mk_TimeInZone(
                 mk_Time(5, 23, 12, 0),
-                mk_Offset(Duration.fromHours(2), PlusOrMinus.Plus)
+                mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Plus)
             ).functions.normalise()
         )
         assertEquals(
-            mk_(mk_Time(23, 23, 12, 0), PlusOrMinus.Plus),
+            mk_(mk_Time(23, 23, 12, 0), ISO8601.PlusOrMinus.Plus),
             mk_TimeInZone(
                 mk_Time(1, 23, 12, 0),
-                mk_Offset(Duration.fromHours(2), PlusOrMinus.Plus)
+                mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Plus)
             ).functions.normalise()
         )
 
@@ -1390,34 +1405,34 @@ class ISO8601Test {
     // Fails due to value overflowing because nat is based on int, not long
     @Ignore
     @Test
-    fun formatDtgInZoneTest() {
+    fun formatDTGInZoneTest() {
         assertEquals(
             "1990-01-01T03:00:00+02:00",
-            mk_DtgInZone(
+            mk_DTGInZone(
                 mk_Date(1990, 1, 1),
                 mk_TimeInZone(
                     mk_Time(3, 0, 0, 0),
-                    mk_Offset(Duration.fromHours(2), PlusOrMinus.Plus)
+                    mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Plus)
                 )
             ).functions.format()
         )
         assertEquals(
             "1990-01-01T03:00:00-02:00",
-            mk_DtgInZone(
+            mk_DTGInZone(
                 mk_Date(1990, 1, 1),
                 mk_TimeInZone(
                     mk_Time(3, 0, 0, 0),
-                    mk_Offset(Duration.fromHours(2), PlusOrMinus.Minus)
+                    mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Minus)
                 )
             ).functions.format()
         )
         assertEquals(
             "1990-01-01T03:00:00Z",
-            mk_DtgInZone(
+            mk_DTGInZone(
                 mk_Date(1990, 1, 1),
                 mk_TimeInZone(
                     mk_Time(3, 0, 0, 0),
-                    mk_Offset(Duration.fromHours(0), PlusOrMinus.None)
+                    mk_Offset(ISO8601.Duration.fromHours(0), ISO8601.PlusOrMinus.None)
                 )
             ).functions.format()
         )
@@ -1442,21 +1457,21 @@ class ISO8601Test {
             "03:00:00+02:00",
             mk_TimeInZone(
                 mk_Time(3, 0, 0, 0),
-                mk_Offset(Duration.fromHours(2), PlusOrMinus.Plus)
+                mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Plus)
             ).functions.format()
         )
         assertEquals(
             "03:00:00-02:00",
             mk_TimeInZone(
                 mk_Time(3, 0, 0, 0),
-                mk_Offset(Duration.fromHours(2), PlusOrMinus.Minus)
+                mk_Offset(ISO8601.Duration.fromHours(2), ISO8601.PlusOrMinus.Minus)
             ).functions.format()
         )
         assertEquals(
             "03:00:00Z",
             mk_TimeInZone(
                 mk_Time(3, 0, 0, 0),
-                mk_Offset(Duration.fromHours(0), PlusOrMinus.None)
+                mk_Offset(ISO8601.Duration.fromHours(0), ISO8601.PlusOrMinus.None)
             ).functions.format()
         )
     }
@@ -1466,8 +1481,8 @@ class ISO8601Test {
         assertEquals(
             "1990-01-01T00:00:00/1990-01-06T00:00:00",
             mk_Interval(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 6), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 6), FIRST_TIME)
             ).functions.format()
         )
         assertEquals(
@@ -1483,12 +1498,12 @@ class ISO8601Test {
     fun formatDurationTest() {
         assertEquals(
             "P2DT6H",
-            Duration.fromHours(6).functions.add(Duration.fromDays(2)).functions.format()
+            ISO8601.Duration.fromHours(6).functions.add(ISO8601.Duration.fromDays(2)).functions.format()
         )
-        assertEquals("PT0S", Duration.fromHours(0).functions.format())
+        assertEquals("PT0S", ISO8601.Duration.fromHours(0).functions.format())
         assertEquals(
             "PT1.001S",
-            Duration.fromSeconds(1).functions.add(Duration.fromMillis(1)).functions.format()
+            ISO8601.Duration.fromSeconds(1).functions.add(ISO8601.Duration.fromMillis(1)).functions.format()
         )
     }
 
@@ -1497,16 +1512,28 @@ class ISO8601Test {
     @Test
     fun addMonthsTest() {
         assertEquals(
-            mk_DTG(mk_Date(1990, 3, 31), FirstTime),
-            mk_DTG(mk_Date(1990, 1, 31), FirstTime).functions.addMonths(2)
+            mk_DTG(mk_Date(1990, 3, 31), FIRST_TIME),
+            addMonths(
+                mk_DTG(mk_Date(1990, 1, 31), FIRST_TIME),
+                2
+            )
         )
         assertEquals(
             mk_DTG(mk_Date(1990, 3, 28), mk_Time(3, 0, 0, 0)),
-            mk_DTG(mk_Date(1990, 1, 31), mk_Time(3, 0, 0, 0)).functions.addMonths(1).functions.addMonths(1)
+            addMonths(
+                addMonths(
+                    mk_DTG(mk_Date(1990, 1, 31), mk_Time(3, 0, 0, 0)),
+                    1
+                ),
+                1
+            )
         )
         assertEquals(
-            mk_DTG(mk_Date(1991, 1, 30), FirstTime),
-            mk_DTG(mk_Date(1990, 11, 30), FirstTime).functions.addMonths(2)
+            mk_DTG(mk_Date(1991, 1, 30), FIRST_TIME),
+            addMonths(
+                mk_DTG(mk_Date(1990, 11, 30), FIRST_TIME),
+                2
+            )
         )
     }
 
@@ -1515,16 +1542,25 @@ class ISO8601Test {
     @Test
     fun subtractMonthsTest() {
         assertEquals(
-            mk_DTG(mk_Date(1990, 2, 2), FirstTime),
-            mk_DTG(mk_Date(1990, 4, 2), FirstTime).functions.subtractMonths(2)
+            mk_DTG(mk_Date(1990, 2, 2), FIRST_TIME),
+            subtractMonths(
+                mk_DTG(mk_Date(1990, 4, 2), FIRST_TIME),
+                2
+            )
         )
         assertEquals(
             mk_DTG(mk_Date(1990, 1, 28), mk_Time(3, 0, 0, 0)),
-            (mk_DTG(mk_Date(1990, 3, 31), mk_Time(3, 0, 0, 0))).functions.subtractMonths(1).functions.subtractMonths(1)
+            subtractMonths(
+                subtractMonths((mk_DTG(mk_Date(1990, 3, 31), mk_Time(3, 0, 0, 0))), 1),
+                1
+            )
         )
         assertEquals(
-            mk_DTG(mk_Date(1990, 11, 2), FirstTime),
-            mk_DTG(mk_Date(1991, 1, 2), FirstTime).functions.subtractMonths(2)
+            mk_DTG(mk_Date(1990, 11, 2), FIRST_TIME),
+            subtractMonths(
+                mk_DTG(mk_Date(1991, 1, 2), FIRST_TIME),
+                2
+            )
         )
     }
 
@@ -1535,22 +1571,22 @@ class ISO8601Test {
         assertEquals(
             0,
             monthsBetween(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
             )
         )
         assertEquals(
             0,
             monthsBetween(
-                mk_DTG(mk_Date(1990, 1, 12), FirstTime),
-                mk_DTG(mk_Date(1990, 2, 1), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 12), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 2, 1), FIRST_TIME)
             )
         )
         assertEquals(
             6,
             monthsBetween(
-                mk_DTG(mk_Date(1990, 12, 12), FirstTime),
-                mk_DTG(mk_Date(1991, 6, 13), FirstTime)
+                mk_DTG(mk_Date(1990, 12, 12), FIRST_TIME),
+                mk_DTG(mk_Date(1991, 6, 13), FIRST_TIME)
             )
         )
     }
@@ -1562,22 +1598,22 @@ class ISO8601Test {
         assertEquals(
             0,
             yearsBetween(
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime),
-                mk_DTG(mk_Date(1990, 1, 1), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 1, 1), FIRST_TIME)
             )
         )
         assertEquals(
             0,
             yearsBetween(
-                mk_DTG(mk_Date(1990, 1, 12), FirstTime),
-                mk_DTG(mk_Date(1990, 12, 1), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 12), FIRST_TIME),
+                mk_DTG(mk_Date(1990, 12, 1), FIRST_TIME)
             )
         )
         assertEquals(
             2,
             yearsBetween(
-                mk_DTG(mk_Date(1990, 1, 12), FirstTime),
-                mk_DTG(mk_Date(1992, 3, 13), FirstTime)
+                mk_DTG(mk_Date(1990, 1, 12), FIRST_TIME),
+                mk_DTG(mk_Date(1992, 3, 13), FIRST_TIME)
             )
 
         )
