@@ -52,7 +52,7 @@ fun monthNotInRange(month: nat1) = month <= MONTHS_PER_YEAR
 fun dayNotInRange(day: nat1) = day <= MAX_DAYS_PER_MONTH
 
 val isLeap: (Year) -> bool = function(
-    command = { y: Year -> y % 4 == 0 && ((y % 100 == 0) implies { y % 400 == 0 }) }
+    command = { year: Year -> year % 4 == 0 && ((year % 100 == 0) implies { year % 400 == 0 }) }
 )
 
 val daysInYear: (Year) -> nat1 = function(
@@ -60,7 +60,7 @@ val daysInYear: (Year) -> nat1 = function(
 )
 
 val daysInMonth: (Year, Month) -> nat1 = function(
-    command = { y: Year, m: Month -> if (isLeap(y)) DAYS_PER_MONTH_LEAP[m] else DAYS_PER_MONTH[m] }
+    command = { year: Year, month: Month -> if (isLeap(year)) DAYS_PER_MONTH_LEAP[month] else DAYS_PER_MONTH[month] }
 )
 
 val minDate: (Set1<Date>) -> Date = function(
@@ -81,20 +81,20 @@ val nextDateForDay: (Date, Day) -> Date = function(
 )
 val nextYMDForDay: (Year, Month, Day, Day) -> Date by lazy {
     function(
-        command = { yy: Year, mm: Month, dd: Day, day: Day ->
-            val nextM = if (mm == MONTHS_PER_YEAR) 1 else mm + 1
-            val nextY = if (mm == MONTHS_PER_YEAR) yy + 1 else yy
+        command = { dateYear: Year, dateMonth: Month, dateDay: Day, day: Day ->
+            val nextMonth = if (dateMonth == MONTHS_PER_YEAR) 1 else dateMonth + 1
+            val nextYear = if (dateMonth == MONTHS_PER_YEAR) dateYear + 1 else dateYear
 
-            if (dd < day && day <= daysInMonth(yy, mm)) {
-                mk_Date(yy, mm, day)
+            if (dateDay < day && day <= daysInMonth(dateYear, dateMonth)) {
+                mk_Date(dateYear, dateMonth, day)
             } else if (day == 1) {
-                mk_Date(nextY, nextM, day)
+                mk_Date(nextYear, nextMonth, day)
             } else {
-                nextYMDForDay(nextY, nextM, 1, day)
+                nextYMDForDay(nextYear, nextMonth, 1, day)
             }
         },
-        pre = { yy, mm, dd, _ -> dd <= daysInMonth(yy, mm) },
-        measure = { yy, mm, _, _ -> ((LastYear + 1) * MONTHS_PER_YEAR) - (yy * MONTHS_PER_YEAR + mm) }
+        pre = { dateYear, dateMonth, dateDay, _ -> dateDay <= daysInMonth(dateYear, dateMonth) },
+        measure = { dateYear, dateMonth, _, _ -> ((LastYear + 1) * MONTHS_PER_YEAR) - (dateYear * MONTHS_PER_YEAR + dateMonth) }
     )
 }
 
@@ -107,19 +107,19 @@ val previousDateForDay: (Date, Day) -> Date = function(
 )
 val previousYMDForDay: (Year, Month, Day, Day) -> Date by lazy {
     function(
-        command = { yy: Year, mm: Month, dd: Day, day: Day ->
-            val prevM = if (mm > 1) mm - 1 else MONTHS_PER_YEAR
-            val prevY = if (mm > 1) yy else yy - 1
+        command = { dateYear: Year, dateMonth: Month, dateDay: Day, day: Day ->
+            val prevMonth = if (dateMonth > 1) dateMonth - 1 else MONTHS_PER_YEAR
+            val prevYear = if (dateMonth > 1) dateYear else dateYear - 1
 
-            if (day < dd) {
-                mk_Date(yy, mm, day)
-            } else if (day <= daysInMonth(prevY, prevM)) {
-                mk_Date(prevY, prevM, day)
+            if (day < dateDay) {
+                mk_Date(dateYear, dateMonth, day)
+            } else if (day <= daysInMonth(prevYear, prevMonth)) {
+                mk_Date(prevYear, prevMonth, day)
             } else {
-                previousYMDForDay(prevY, prevM, 1, day)
+                previousYMDForDay(prevYear, prevMonth, 1, day)
             }
         },
-        pre = { yy, mm, dd, _ -> dd <= daysInMonth(yy, mm) },
-        measure = { yy, mm, _, _ -> yy * MONTHS_PER_YEAR + mm }
+        pre = { dateYear, dateMonth, dd, _ -> dd <= daysInMonth(dateYear, dateMonth) },
+        measure = { dateYear, dateMonth, _, _ -> dateYear * MONTHS_PER_YEAR + dateMonth }
     )
 }

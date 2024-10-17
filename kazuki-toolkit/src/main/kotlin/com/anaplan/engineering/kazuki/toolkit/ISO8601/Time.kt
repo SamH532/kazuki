@@ -46,15 +46,15 @@ interface TimeInZone {
     val time: Time
     val offset: Offset
 
-    val nTime: Time get() = functions.normalise()._1
+    val normalisedTime: Time get() = functions.normalise()._1
 
     @ComparableProperty
-    val duration_ms: nat get() = nTime.functions.toDuration().duration_ms
+    val duration_ms: nat get() = normalisedTime.functions.toDuration().duration_ms
 
-    @FunctionProvider(TIZFunctions::class)
-    val functions: TIZFunctions
+    @FunctionProvider(TimeInZoneFunctions::class)
+    val functions: TimeInZoneFunctions
 
-    class TIZFunctions(private val time: TimeInZone) {
+    class TimeInZoneFunctions(private val time: TimeInZone) {
 
         val toDuration: () -> Duration = function(
             command = { time.functions.normalise()._1.functions.toDuration() },
@@ -128,13 +128,13 @@ interface Offset {
 
         val format: () -> String = function<String>(
             command = {
-                val hm = offset.delta.functions.toTime()
+                val hourMinute = offset.delta.functions.toTime()
                 val sign = when (offset.pm) {
                     PlusOrMinus.Plus -> "+"
                     PlusOrMinus.Minus -> "-"
                     else -> ""
                 }
-                String.format("%s%02d:%02d", sign, hm.hour, hm.minute)
+                String.format("%s%02d:%02d", sign, hourMinute.hour, hourMinute.minute)
             }
         )
     }

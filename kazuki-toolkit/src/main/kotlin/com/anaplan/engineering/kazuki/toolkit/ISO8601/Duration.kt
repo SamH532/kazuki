@@ -105,7 +105,8 @@ interface Duration {
             command = { year: Year ->
                 (set(
                     1..MONTHS_PER_YEAR,
-                    filter = { durationUpToMonth(year, it).duration_ms <= duration.duration_ms }) { it }).max() - 1
+                    filter = { durationUpToMonth(year, it).duration_ms <= duration.duration_ms })
+                { it }).max() - 1
             },
             pre = { year -> duration.duration_ms < fromYear(year).duration_ms }
         )
@@ -216,7 +217,7 @@ interface Duration {
         )
 
         private val formatItemSec: (nat, nat) -> String = function(
-            command = { x: nat, y: nat -> String.format("%d.%03dS", x, y) }
+            command = { seconds: nat, milliseconds: nat -> String.format("%d.%03dS", seconds, milliseconds) }
         )
 
         val format: () -> String = function<String>(
@@ -237,15 +238,15 @@ interface Duration {
 }
 
 val minDuration: (Set1<Duration>) -> Duration = function(
-    command = { durs: Set1<Duration> -> mk_Duration((set(durs) { it.duration_ms }).min()) },
-    post = { durs, result -> result in durs && forall(durs) { result.duration_ms <= it.duration_ms } }
+    command = { durationSet1: Set1<Duration> -> mk_Duration((set(durationSet1) { it.duration_ms }).min()) },
+    post = { durationSet1, result -> result in durationSet1 && forall(durationSet1) { result.duration_ms <= it.duration_ms } }
 )
 val maxDuration: (Set1<Duration>) -> Duration = function(
-    command = { durs: Set1<Duration> -> mk_Duration((set(durs) { it.duration_ms }).max()) },
-    post = { durs, result -> result in durs && forall(durs) { result.duration_ms >= it.duration_ms } }
+    command = { durationSet1: Set1<Duration> -> mk_Duration((set(durationSet1) { it.duration_ms }).max()) },
+    post = { durationSet1, result -> result in durationSet1 && forall(durationSet1) { result.duration_ms >= it.duration_ms } }
 )
 val sumDuration: (Sequence<Duration>) -> Duration = function(
-    command = { sd: Sequence<Duration> -> mk_Duration((seq(sd) { it.duration_ms }).sum()) }
+    command = { durationSequence: Sequence<Duration> -> mk_Duration((seq(durationSequence) { it.duration_ms }).sum()) }
 )
 
 val durationDiff: (Duration, Duration) -> Duration = function(

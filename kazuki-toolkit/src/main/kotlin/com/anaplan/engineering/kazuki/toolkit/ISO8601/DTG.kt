@@ -42,10 +42,7 @@ interface DTG {
                     dtg.duration_ms == target.duration_ms
                 } else {
                     dtg.functions.inInterval(
-                        mk_Interval(
-                            target.functions.subtract(duration),
-                            target.functions.add(duration)
-                        )
+                        mk_Interval(target.functions.subtract(duration), target.functions.add(duration))
                     )
                 }
             },
@@ -61,8 +58,8 @@ interface DTG {
         )
 
         val finestGranularity: (Duration) -> bool = function(
-            command = { d: Duration -> dtg.functions.toDuration().duration_ms % d.duration_ms == 0 },
-            pre = { d -> d.duration_ms != NO_DURATION.duration_ms }
+            command = { duration: Duration -> dtg.functions.toDuration().duration_ms % duration.duration_ms == 0 },
+            pre = { duration -> duration.duration_ms != NO_DURATION.duration_ms }
         )
 
         val instant: () -> Interval = function(
@@ -76,24 +73,24 @@ interface DTG {
 
         val addMonths: (nat) -> DTG = function(
             command = { n: nat ->
-                val nextM = ((dtg.date.month + n - 1) % MONTHS_PER_YEAR) + 1
-                val nextY = dtg.date.year + (dtg.date.month + n - 1) / MONTHS_PER_YEAR
-                if (dtg.date.day > daysInMonth(nextY, nextM)) {
-                    mk_DTG(mk_Date(nextY, nextM, daysInMonth(nextY, nextM)), dtg.time)
+                val nextMonth = ((dtg.date.month + n - 1) % MONTHS_PER_YEAR) + 1
+                val nextYear = dtg.date.year + (dtg.date.month + n - 1) / MONTHS_PER_YEAR
+                if (dtg.date.day > daysInMonth(nextYear, nextMonth)) {
+                    mk_DTG(mk_Date(nextYear, nextMonth, daysInMonth(nextYear, nextMonth)), dtg.time)
                 } else {
-                    mk_DTG(mk_Date(nextY, nextM, dtg.date.day), dtg.time)
+                    mk_DTG(mk_Date(nextYear, nextMonth, dtg.date.day), dtg.time)
                 }
             },
         )
 
         val subtractMonths: (nat) -> DTG = function(
             command = { n: nat ->
-                val nextM = (dtg.date.month - n - 1).mod(MONTHS_PER_YEAR) + 1
-                val nextY = dtg.date.year + (dtg.date.month - n - 12) / MONTHS_PER_YEAR
-                if (dtg.date.day > daysInMonth(nextY, nextM)) {
-                    mk_DTG(mk_Date(nextY, nextM, daysInMonth(nextY, nextM)), dtg.time)
+                val nextMonth = (dtg.date.month - n - 1).mod(MONTHS_PER_YEAR) + 1
+                val nextYear = dtg.date.year + (dtg.date.month - n - 12) / MONTHS_PER_YEAR
+                if (dtg.date.day > daysInMonth(nextYear, nextMonth)) {
+                    mk_DTG(mk_Date(nextYear, nextMonth, daysInMonth(nextYear, nextMonth)), dtg.time)
                 } else {
-                    mk_DTG(mk_Date(nextY, nextM, dtg.date.day), dtg.time)
+                    mk_DTG(mk_Date(nextYear, nextMonth, dtg.date.day), dtg.time)
                 }
             }
         )
@@ -187,9 +184,9 @@ interface Interval {
             post = { result -> interval.begins.functions.add(result) == interval.ends }
         )
         val finestGranularityI: (Duration) -> bool = function(
-            command = { d: Duration ->
-                interval.begins.functions.finestGranularity(d) &&
-                        interval.ends.functions.finestGranularity(d)
+            command = { duration: Duration ->
+                interval.begins.functions.finestGranularity(duration) &&
+                        interval.ends.functions.finestGranularity(duration)
             }
         )
 
